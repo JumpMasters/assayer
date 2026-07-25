@@ -1,0 +1,1 @@
+tests/unit/test_money.py::test_round_micro_rejects_negative_with_typed_error

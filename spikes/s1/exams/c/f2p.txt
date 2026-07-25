@@ -1,0 +1,1 @@
+tests/unit/test_pricing.py::test_pricing_validation_raises_typed_domain_errors

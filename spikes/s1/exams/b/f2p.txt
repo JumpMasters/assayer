@@ -1,0 +1,3 @@
+tests/unit/test_periods.py::test_rolling_window_start_advances_in_whole_windows
+tests/unit/test_periods.py::test_rolling_window_start_normalizes_to_utc
+tests/unit/test_periods.py::test_rolling_window_start_rejects_bad_input_with_a_typed_error

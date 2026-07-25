@@ -38,3 +38,22 @@ HARNESS="$TMP/bad-harness.sh" bash "$SPIKE/run-sitting.sh" "$EXAM" 2 "$CSV2" \
 IFS=, read -r _ _ f2p _ _ _ _ _ _ _ err _ <<<"$(cat "$CSV2")"
 [ "$err" = "1" ] && [ "$f2p" = "0" ] || { echo "FAIL: error path"; exit 1; }
 echo "PASS (error path)"
+
+# real-result.json was captured from an actual `claude -p --output-format json` run;
+# only session_id and uuid were zeroed before committing.
+cat > "$TMP/real-harness.sh" <<EOF
+#!/usr/bin/env bash
+cat "$SPIKE/fixtures/real-result.json"
+EOF
+chmod +x "$TMP/real-harness.sh"
+CSV3="$TMP/out3.csv"
+HARNESS="$TMP/real-harness.sh" bash "$SPIKE/run-sitting.sh" "$EXAM" 3 "$CSV3"
+row3=$(cat "$CSV3")
+echo "row: $row3"
+IFS=, read -r _ _ _ _ cost3 turns3 _ model3 denials3 _ err3 _ <<<"$row3"
+[ "$cost3" = "0.0510675" ]          || { echo "FAIL: real cost not parsed: $cost3"; exit 1; }
+[ "$turns3" = "1" ]                 || { echo "FAIL: real num_turns: $turns3"; exit 1; }
+[ "$model3" = "claude-opus-4-8" ]   || { echo "FAIL: real canonical model: $model3"; exit 1; }
+[ "$denials3" = "0" ]               || { echo "FAIL: real permission_denials: $denials3"; exit 1; }
+[ "$err3" = "0" ]                   || { echo "FAIL: real run marked error"; exit 1; }
+echo "PASS (real payload)"

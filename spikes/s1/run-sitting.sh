@@ -10,9 +10,13 @@ source "$EXAM_DIR/pin.env"
 
 now_ms() { python3 -c 'import time; print(int(time.time()*1000))'; }
 
-WT=$(mktemp -d)/wt
+WT_PARENT=$(mktemp -d)
+WT="$WT_PARENT/wt"
 git -C "$REPO" worktree add --detach "$WT" "$BASE_SHA" >/dev/null 2>&1
-cleanup() { git -C "$REPO" worktree remove --force "$WT" >/dev/null 2>&1 || true; }
+cleanup() {
+  git -C "$REPO" worktree remove --force "$WT" >/dev/null 2>&1 || true
+  rm -rf "$WT_PARENT"
+}
 trap cleanup EXIT
 # `if` rather than `[ ... ] && ...` purely for legibility; bash exempts a failing
 # test inside an AND-OR list from `set -e`, so both forms are safe here.

@@ -57,3 +57,58 @@ IFS=, read -r _ _ _ _ cost3 turns3 _ model3 denials3 _ err3 _ <<<"$row3"
 [ "$denials3" = "0" ]               || { echo "FAIL: real permission_denials: $denials3"; exit 1; }
 [ "$err3" = "0" ]                   || { echo "FAIL: real run marked error"; exit 1; }
 echo "PASS (real payload)"
+
+# The two columns S1 exists to measure. A stub pytest stands in for `uv run pytest`
+# via the PYTEST seam, so the exit-code verdict is proven offline.
+cat > "$TMP/pytest-stub.sh" <<'EOF'
+#!/usr/bin/env bash
+exit "${PYTEST_RC:-0}"
+EOF
+chmod +x "$TMP/pytest-stub.sh"
+EXAMP="$TMP/exam-pytest"; cp -R "$EXAM" "$EXAMP"
+printf 'tests/test_stub.py::test_one\n' > "$EXAMP/f2p.txt"
+
+# $1 = stub pytest exit code, $2 = expected f2p_pass, $3 = expected is_error
+check_rc() {
+  local csv="$TMP/pytest-$1.csv"
+  PYTEST_RC="$1" PYTEST="$TMP/pytest-stub.sh" HARNESS="$SPIKE/fixtures/stub-harness.sh" \
+    bash "$SPIKE/run-sitting.sh" "$EXAMP" "9$1" "$csv"
+  echo "row (pytest rc=$1): $(cat "$csv")"
+  IFS=, read -r _ _ f2p _ _ _ _ _ _ _ err _ <<<"$(cat "$csv")"
+  [ "$f2p" = "$2" ] && [ "$err" = "$3" ] \
+    || { echo "FAIL: pytest rc=$1 gave f2p=$f2p err=$err, want f2p=$2 err=$3"; exit 1; }
+}
+check_rc 0 1 0   # clean pass
+check_rc 1 0 0   # genuine failed assertion
+check_rc 4 0 1   # measured: pytest exits 4 for a node id or file that no longer exists
+echo "PASS (pytest exit codes)"
+
+# A declared node file that is missing is a script fault, not a passing set.
+EXAMM="$TMP/exam-missing"; cp -R "$EXAM" "$EXAMM"; rm "$EXAMM/f2p.txt"
+CSV4="$TMP/out4.csv"
+HARNESS="$SPIKE/fixtures/stub-harness.sh" bash "$SPIKE/run-sitting.sh" "$EXAMM" 4 "$CSV4"
+echo "row: $(cat "$CSV4")"
+IFS=, read -r _ _ f2p _ _ _ _ _ _ _ err _ <<<"$(cat "$CSV4")"
+[ "$err" = "1" ] && [ "$f2p" = "0" ] \
+  || { echo "FAIL: missing f2p.txt scored f2p=$f2p err=$err"; exit 1; }
+echo "PASS (missing node file)"
+
+# Every node id is evaluated, including a last line with no trailing newline.
+cat > "$TMP/pytest-nid.sh" <<'EOF'
+#!/usr/bin/env bash
+# Fails only the node id in $FAIL_NID, which run_set passes as the last argument.
+[ "${*: -1}" = "${FAIL_NID:-}" ] && exit 1
+exit 0
+EOF
+chmod +x "$TMP/pytest-nid.sh"
+EXAMN="$TMP/exam-nonewline"; cp -R "$EXAM" "$EXAMN"
+printf 'tests/t.py::a\ntests/t.py::b' > "$EXAMN/f2p.txt"   # deliberately no final newline
+CSV5="$TMP/out5.csv"
+FAIL_NID='tests/t.py::b' PYTEST="$TMP/pytest-nid.sh" \
+  HARNESS="$SPIKE/fixtures/stub-harness.sh" \
+  bash "$SPIKE/run-sitting.sh" "$EXAMN" 5 "$CSV5"
+echo "row: $(cat "$CSV5")"
+IFS=, read -r _ _ f2p _ _ _ _ _ _ _ err _ <<<"$(cat "$CSV5")"
+[ "$f2p" = "0" ] && [ "$err" = "0" ] \
+  || { echo "FAIL: last node id skipped — f2p=$f2p err=$err"; exit 1; }
+echo "PASS (unterminated node file)"

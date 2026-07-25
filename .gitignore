@@ -37,3 +37,8 @@ docs/superpowers/
 *~
 .idea/
 .vscode/
+
+# Spike inputs that must stay local: raw transcripts and raw harness output
+# carry tool outputs, absolute paths, and environment state (see spec section 8)
+spikes/s1/sessions/
+spikes/s1/results/raw/

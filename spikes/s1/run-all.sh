@@ -7,6 +7,9 @@ N=${N:-10}
 
 [ -f "$CSV" ] || echo "exam,n,f2p_pass,p2p_pass,cost_usd,num_turns,wall_ms,canonical_model,permission_denials,touched_files,is_error,stop_reason" > "$CSV"
 
+[ -d "$SPIKE/exams" ] && [ -n "$(ls -A "$SPIKE/exams" 2>/dev/null)" ] \
+  || { echo "no exam directories found under $SPIKE/exams" >&2; exit 1; }
+
 for exam in "$SPIKE"/exams/*/; do
   id=$(grep -h '^EXAM_ID=' "$exam/pin.env" | cut -d= -f2)
   for n in $(seq 1 "$N"); do

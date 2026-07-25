@@ -11,7 +11,10 @@ N=${N:-10}
   || { echo "no exam directories found under $SPIKE/exams" >&2; exit 1; }
 
 for exam in "$SPIKE"/exams/*/; do
-  id=$(grep -h '^EXAM_ID=' "$exam/pin.env" | cut -d= -f2)
+  # Sourced, not grepped: run-sitting.sh sources pin.env, and any quoting a real one
+  # picks up would desynchronize the two readings and duplicate rows for one sitting.
+  # shellcheck source=/dev/null
+  id=$(. "$exam/pin.env" && echo "$EXAM_ID")
   for n in $(seq 1 "$N"); do
     if grep -q "^$id,$n," "$CSV"; then echo "skip $id/$n"; continue; fi
     echo "── $id sitting $n/$N"

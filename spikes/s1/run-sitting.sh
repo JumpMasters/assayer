@@ -12,12 +12,13 @@ now_ms() { python3 -c 'import time; print(int(time.time()*1000))'; }
 
 WT_PARENT=$(mktemp -d)
 WT="$WT_PARENT/wt"
-git -C "$REPO" worktree add --detach "$WT" "$BASE_SHA" >/dev/null 2>&1
 cleanup() {
   git -C "$REPO" worktree remove --force "$WT" >/dev/null 2>&1 || true
   rm -rf "$WT_PARENT"
 }
+# Armed before the worktree exists, so a failing `worktree add` still removes the parent.
 trap cleanup EXIT
+git -C "$REPO" worktree add --detach "$WT" "$BASE_SHA" >/dev/null 2>&1
 # `if` rather than `[ ... ] && ...` purely for legibility; bash exempts a failing
 # test inside an AND-OR list from `set -e`, so both forms are safe here.
 if [ -f "$EXAM_DIR/workspace.patch" ]; then
@@ -53,7 +54,9 @@ except Exception:
     print("0 0 0 unknown 1 unparseable"); sys.exit()
 rc = int(sys.argv[2])
 mu = d.get("modelUsage") or {}
-canon = next((v.get("canonicalModel", "unknown") for v in mu.values()), "unknown")
+# Every model the sitting billed, not just the first: a session can carry a second
+# entry for internal or subagent calls, and naming only one would misattribute the row.
+canon = "|".join(mu) or "unknown"
 err = 1 if (rc != 0 or d.get("is_error") or d.get("subtype") != "success") else 0
 print(d.get("total_cost_usd", 0), d.get("num_turns", 0),
       len(d.get("permission_denials") or []), canon, err,
@@ -64,23 +67,44 @@ PY
 # A permission stall is ERROR, not FAIL — the sitting produced no verdict.
 if [ "$denials" != "0" ]; then is_error=1; fi
 
-run_set() {  # $1 = node-id file; 1 if every node passes (or the set is empty), else 0
-  [ -s "$1" ] || { echo 1; return; }
-  while read -r nid; do
+# Same seam as HARNESS, and for the same reason: the test substitutes a stub pytest.
+read -ra PYTEST_CMD <<<"${PYTEST:-uv run pytest}"
+
+# $1 = node-id file. Sets $set_pass (1 if every node passed, 0 otherwise) and
+# $set_error. pytest exits 0 for pass and 1 for a failed assertion; every other code
+# means the test never ran a verdict — a missing node id, a collection error, a broken
+# environment. Those are ERROR, never FAIL, so an unknown code can never manufacture a
+# regression. An unreadable node file is our own fault and is ERROR too; a readable but
+# empty one is legitimately vacuous and passes.
+run_set() {
+  set_pass=1; set_error=0
+  if [ ! -r "$1" ]; then set_pass=0; set_error=1; return; fi
+  # `|| [ -n "$nid" ]` so a final line with no trailing newline is still evaluated.
+  while read -r nid || [ -n "$nid" ]; do
     [ -z "$nid" ] && continue
-    ( cd "$WT" && uv run pytest -q "$nid" ) >/dev/null 2>&1 || { echo 0; return; }
+    rc=0
+    # </dev/null so pytest cannot swallow the remaining node ids; `cd` failure exits
+    # non-{0,1} so it too reads as ERROR rather than as a failed assertion.
+    ( cd "$WT" || exit 99; "${PYTEST_CMD[@]}" -q "$nid" ) >/dev/null 2>&1 </dev/null \
+      || rc=$?
+    case "$rc" in
+      0) ;;
+      1) set_pass=0 ;;                      # keep going: a later node may be an ERROR
+      *) set_pass=0; set_error=1; return ;;
+    esac
   done < "$1"
-  echo 1
 }
 
 if [ "$is_error" = "1" ]; then
   f2p=0; p2p=0
 else
-  f2p=$(run_set "$EXAM_DIR/f2p.txt")
-  p2p=$(run_set "$EXAM_DIR/p2p.txt")
+  run_set "$EXAM_DIR/f2p.txt"; f2p=$set_pass; f2p_error=$set_error
+  run_set "$EXAM_DIR/p2p.txt"; p2p=$set_pass
+  if [ "$f2p_error" = "1" ] || [ "$set_error" = "1" ]; then is_error=1; fi
 fi
 
-touched=$(git -C "$WT" status --porcelain | wc -l | tr -d ' ')
+# -uall: without it an entirely untracked directory collapses to one entry.
+touched=$(git -C "$WT" status --porcelain -uall | wc -l | tr -d ' ')
 
 printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
   "$EXAM_ID" "$N" "$f2p" "$p2p" "$cost" "$turns" "$wall_ms" \

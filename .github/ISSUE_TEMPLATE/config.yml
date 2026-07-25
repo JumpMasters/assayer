@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/JumpMasters/assayer/security/advisories/new
+    about: Report security issues privately, not as a public issue.
+  - name: Design feedback
+    url: https://github.com/JumpMasters/assayer/tree/main/docs/adr
+    about: Read the architecture decision records first, then open an issue referencing the record you are responding to.

@@ -1,0 +1,39 @@
+# Compiled binaries and build output
+/assayer
+/bin/
+/dist/
+
+# Test and coverage artifacts
+*.test
+*.out
+coverage.html
+coverage.xml
+*.prof
+
+# Go workspace files (local only)
+go.work
+go.work.sum
+
+# Internal working docs — keep ADRs (docs/adr), ignore everything else
+docs/superpowers/
+
+# Assistant / Claude Code files — never committed
+.claude/
+.claude-mem/
+**/CLAUDE.md
+**/CLAUDE.local.md
+
+# Assayer's own state: baselines are committed, per-run records stay local
+.assayer/ledger.jsonl
+
+# Secrets / credentials
+.env
+*.pem
+*.key
+
+# OS and editor cruft
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/

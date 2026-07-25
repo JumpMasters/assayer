@@ -44,11 +44,14 @@ jobs:
         run: ./scripts/coverage.sh 80
       # The coverage gate above is the one that blocks a merge; Codecov is a
       # reporting surface on top of it, so an upload failure must not fail CI.
+      # Tokenless: Codecov resolves the repository from the GitHub Actions
+      # context, which keeps the upload pointed at whatever this repository is
+      # actually called. A stored token pins uploads to the repository record
+      # the token was minted for, which silently survives a rename or transfer.
       - name: upload coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
           files: ./coverage.out
-          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
   lint:

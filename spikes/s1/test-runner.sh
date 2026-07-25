@@ -112,3 +112,55 @@ IFS=, read -r _ _ f2p _ _ _ _ _ _ _ err _ <<<"$(cat "$CSV5")"
 [ "$f2p" = "0" ] && [ "$err" = "0" ] \
   || { echo "FAIL: last node id skipped — f2p=$f2p err=$err"; exit 1; }
 echo "PASS (unterminated node file)"
+
+# The anti-gaming property: a harness that plants its own passing test under tests/ must
+# not get to keep it. tests.patch is applied after the harness runs, once the agent's
+# tests/ edits are discarded, so F2P reflects the exam's real test — not the agent's.
+EXAMG="$TMP/exam-gaming"; cp -R "$EXAM" "$EXAMG"
+printf 'tests/test_gate.py::test_gate\n' > "$EXAMG/f2p.txt"
+
+# tests.patch: the exam's own test, built via a throwaway repo so `git apply` sees an
+# ordinary new-file diff, independent of the stub repo run-sitting.sh operates on.
+PATCHSRC="$TMP/patchsrc"; git init -q "$PATCHSRC"
+mkdir -p "$PATCHSRC/tests"
+printf 'SENTINEL_EXAM\n' > "$PATCHSRC/tests/test_gate.py"
+git -C "$PATCHSRC" add tests/test_gate.py
+git -C "$PATCHSRC" diff --cached > "$EXAMG/tests.patch"
+
+cat > "$TMP/bogus-harness.sh" <<'EOF'
+#!/usr/bin/env bash
+# Plants a test that would exit 0 (pass) if it survived to evaluation — the gaming
+# attempt this case exists to defeat.
+set -euo pipefail
+mkdir -p tests
+printf 'SENTINEL_BOGUS\n' > tests/test_gate.py
+cat <<'JSON'
+{"is_error":false,"num_turns":1,"stop_reason":"end_turn","total_cost_usd":0.01,
+ "permission_denials":[],
+ "modelUsage":{"claude-opus-4-8":{"canonicalModel":"claude-opus-4-8","provider":"firstParty"}},
+ "result":"done","subtype":"success","type":"result"}
+JSON
+EOF
+chmod +x "$TMP/bogus-harness.sh"
+
+cat > "$TMP/pytest-gate.sh" <<'EOF'
+#!/usr/bin/env bash
+# Node id is the last argument, same convention as pytest-nid.sh above. Unlike the other
+# stubs, this one actually inspects file content, so the test can tell which version of
+# tests/test_gate.py survived: the harness's bogus one, or the exam's own tests.patch.
+nid="${*: -1}"; file="${nid%%::*}"
+[ -f "$file" ] || exit 4
+grep -q SENTINEL_BOGUS "$file" && exit 0   # bogus test present: the gaming outcome
+grep -q SENTINEL_EXAM "$file" && exit 1    # exam's real test: correctly still fails
+exit 4
+EOF
+chmod +x "$TMP/pytest-gate.sh"
+
+CSVG="$TMP/out-gaming.csv"
+HARNESS="$TMP/bogus-harness.sh" PYTEST="$TMP/pytest-gate.sh" \
+  bash "$SPIKE/run-sitting.sh" "$EXAMG" 6 "$CSVG"
+echo "row: $(cat "$CSVG")"
+IFS=, read -r _ _ f2p _ _ _ _ _ _ _ err _ <<<"$(cat "$CSVG")"
+[ "$f2p" = "0" ] && [ "$err" = "0" ] \
+  || { echo "FAIL: bogus harness test gamed F2P — f2p=$f2p err=$err"; exit 1; }
+echo "PASS (tests.patch beats a gamed test)"

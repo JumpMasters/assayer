@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # One S1 sitting: isolate in a worktree, run the harness, evaluate, append one CSV row.
 # Exits 0 even on a failed or errored sitting — that outcome is the measurement.
+#
+# Exam directory contract: `workspace.patch`, if present, is applied before the harness
+# runs. `tests.patch`, if present, holds the exam's own verification tests and is applied
+# after the harness runs, once any edits the agent made under tests/ are discarded — the
+# SWE-bench shape. A sitting starts from BASE_SHA, where those tests do not exist yet, so
+# an agent can neither guess a node id's name to pass it nor pass it by writing or editing
+# a test itself.
 set -euo pipefail
 
 EXAM_DIR=$(cd "$1" && pwd); N=$2; CSV=$3
@@ -48,6 +55,11 @@ set +e
 harness_rc=$?
 set -e
 wall_ms=$(( $(now_ms) - start ))
+
+# Captured now, before tests/ is reset to the exam's own state below, so this is the
+# agent's footprint — not inflated by the exam's own test patch landing afterward.
+# -uall: without it an entirely untracked directory collapses to one entry.
+touched=$(git -C "$WT" status --porcelain -uall | wc -l | tr -d ' ')
 
 # Parse the result JSON. A harness that crashed leaves unparseable output: that is ERROR.
 read -r cost turns denials model is_error stop < <(
@@ -100,6 +112,23 @@ run_set() {
   done < "$1"
 }
 
+# Discards the agent's edits under tests/, then applies the exam's own tests — see the
+# header comment for why. No tests.patch means an older-shape exam: leave tests/ alone
+# so the existing stub fixtures keep working unchanged. A restore or apply failure is
+# ERROR, never a failed assertion: the sitting produced no valid verdict either way.
+apply_exam_tests() {
+  [ -f "$EXAM_DIR/tests.patch" ] || return 0
+  # cat-file -e tells us whether tests/ was ever tracked at BASE_SHA; a bare `checkout`
+  # errors on a path that wasn't, which is the ordinary case for a freshly authored exam.
+  if git -C "$WT" cat-file -e "$BASE_SHA:tests" 2>/dev/null; then
+    git -C "$WT" checkout "$BASE_SHA" -- tests || return 1
+  fi
+  git -C "$WT" clean -fdq -- tests || return 1
+  git -C "$WT" apply "$EXAM_DIR/tests.patch" || return 1
+}
+
+if [ "$is_error" != "1" ] && ! apply_exam_tests; then is_error=1; fi
+
 if [ "$is_error" = "1" ]; then
   f2p=0; p2p=0
 else
@@ -107,9 +136,6 @@ else
   run_set "$EXAM_DIR/p2p.txt"; p2p=$set_pass
   if [ "$f2p_error" = "1" ] || [ "$set_error" = "1" ]; then is_error=1; fi
 fi
-
-# -uall: without it an entirely untracked directory collapses to one entry.
-touched=$(git -C "$WT" status --porcelain -uall | wc -l | tr -d ' ')
 
 printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
   "$EXAM_ID" "$N" "$f2p" "$p2p" "$cost" "$turns" "$wall_ms" \

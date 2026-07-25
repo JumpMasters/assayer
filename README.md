@@ -2,6 +2,7 @@
 
 [![ci](https://github.com/JumpMasters/assayer/actions/workflows/ci.yml/badge.svg)](https://github.com/JumpMasters/assayer/actions/workflows/ci.yml)
 [![codeql](https://github.com/JumpMasters/assayer/actions/workflows/codeql.yml/badge.svg)](https://github.com/JumpMasters/assayer/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/JumpMasters/assayer/branch/main/graph/badge.svg)](https://codecov.io/gh/JumpMasters/assayer)
 [![Go](https://img.shields.io/github/go-mod/go-version/JumpMasters/assayer)](go.mod)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 

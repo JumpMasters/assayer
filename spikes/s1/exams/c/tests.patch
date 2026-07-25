@@ -1,0 +1,47 @@
+diff --git a/tests/unit/test_pricing.py b/tests/unit/test_pricing.py
+index db32122..41924e1 100644
+--- a/tests/unit/test_pricing.py
++++ b/tests/unit/test_pricing.py
+@@ -311,3 +311,42 @@ def test_estimate_rejects_negative_cache_creation_bound() -> None:
+             max_output_tokens=10,
+             cache_creation_bound_tokens=-1,
+         )
++
++
++def test_pricing_validation_raises_typed_domain_errors() -> None:
++    # Imported inside the test so an absent implementation is a clean assertion
++    # failure rather than a collection error; a collection error is recorded as
++    # ERROR and drops out of the pass-rate denominator, inflating the pass rate.
++    # Asserted against the TollgateError base, never a named subclass, so any
++    # correct structure passes — one error class or several.
++    from tollgate.domain.errors import TollgateError
++    from tollgate.domain.pricing import ModelPrice, actual_micro, estimate_micro, reconcile
++
++    def price(**over: Decimal) -> ModelPrice:
++        kw = {
++            "input_micro_per_token": Decimal("2"),
++            "output_micro_per_token": Decimal("3"),
++            "cached_input_micro_per_token": Decimal("1"),
++            "cache_creation_micro_per_token": Decimal("4"),
++        }
++        kw.update(over)
++        return ModelPrice(provider="p", model="m", **kw)  # type: ignore[arg-type]
++
++    ok = price()
++
++    with pytest.raises(TollgateError):
++        price(input_micro_per_token=Decimal("-1"))
++    with pytest.raises(TollgateError):
++        price(cached_input_micro_per_token=Decimal("99"))
++    with pytest.raises(TollgateError):
++        estimate_micro(ok, input_bound_tokens=-1, max_output_tokens=0)
++    with pytest.raises(TollgateError):
++        actual_micro(ok, input_tokens=-1, output_tokens=0)
++    with pytest.raises(TollgateError):
++        actual_micro(ok, input_tokens=1, output_tokens=0, cached_input_tokens=5)
++    with pytest.raises(TollgateError):
++        reconcile(reserved_micro=-1, actual=0)
++
++    # Existing callers catch ValueError; that must keep working.
++    with pytest.raises(ValueError):
++        reconcile(reserved_micro=-1, actual=0)

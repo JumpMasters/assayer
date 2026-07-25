@@ -1,0 +1,55 @@
+diff --git a/tests/unit/test_periods.py b/tests/unit/test_periods.py
+index 48dff42..7b23bb0 100644
+--- a/tests/unit/test_periods.py
++++ b/tests/unit/test_periods.py
+@@ -37,3 +37,50 @@ def test_non_utc_input_is_converted_before_the_month_is_taken() -> None:
+ def test_naive_datetime_is_rejected() -> None:
+     with pytest.raises(ValueError, match="timezone-aware"):
+         calendar_month_start(datetime(2026, 6, 23, 12, 0))
++
++
++def test_rolling_window_start_advances_in_whole_windows() -> None:
++    # Imported inside the test: absent the implementation this must be a clean
++    # assertion failure, not a collection error. A collection error is recorded as
++    # ERROR and drops out of the pass-rate denominator, inflating the pass rate.
++    from tollgate.domain.periods import rolling_window_start
++
++    anchor = datetime(2026, 1, 1, tzinfo=UTC)
++    # At the anchor itself the window start is the anchor.
++    assert rolling_window_start(anchor, 7, anchor) == anchor
++    # Mid-window rounds down to the containing boundary.
++    assert rolling_window_start(datetime(2026, 1, 5, tzinfo=UTC), 7, anchor) == anchor
++    # Exactly on the next boundary, that boundary is the start.
++    assert rolling_window_start(datetime(2026, 1, 8, tzinfo=UTC), 7, anchor) == datetime(
++        2026, 1, 8, tzinfo=UTC
++    )
++    # Many windows later.
++    assert rolling_window_start(datetime(2026, 3, 2, tzinfo=UTC), 7, anchor) == datetime(
++        2026, 2, 26, tzinfo=UTC
++    )
++
++
++def test_rolling_window_start_normalizes_to_utc() -> None:
++    from tollgate.domain.periods import rolling_window_start
++
++    anchor = datetime(2026, 1, 1, 5, 0, tzinfo=timezone(timedelta(hours=5)))
++    now = datetime(2026, 1, 1, 3, 0, tzinfo=timezone(-timedelta(hours=5)))
++    # anchor is 00:00Z; now is 08:00Z — same window, start is the UTC anchor.
++    assert rolling_window_start(now, 1, anchor) == datetime(2026, 1, 1, tzinfo=UTC)
++
++
++def test_rolling_window_start_rejects_bad_input_with_a_typed_error() -> None:
++    from tollgate.domain.errors import TollgateError
++    from tollgate.domain.periods import rolling_window_start
++
++    aware = datetime(2026, 1, 1, tzinfo=UTC)
++    naive = datetime(2026, 1, 1)  # noqa: DTZ001
++    # The base class, not a named subclass: any correct typed error passes.
++    with pytest.raises(TollgateError):
++        rolling_window_start(naive, 7, aware)
++    with pytest.raises(TollgateError):
++        rolling_window_start(aware, 7, naive)
++    with pytest.raises(TollgateError):
++        rolling_window_start(aware, 0, aware)
++    with pytest.raises(TollgateError):
++        rolling_window_start(datetime(2025, 12, 1, tzinfo=UTC), 7, aware)

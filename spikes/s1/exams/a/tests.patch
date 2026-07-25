@@ -1,0 +1,22 @@
+diff --git a/tests/unit/test_money.py b/tests/unit/test_money.py
+index 9e90b78..765e5c5 100644
+--- a/tests/unit/test_money.py
++++ b/tests/unit/test_money.py
+@@ -74,3 +74,17 @@ def test_ceil_micro_rejects_amount_above_int8_max() -> None:
+     # The int8 ceiling guard applies to the ceiling path too (#66/#77).
+     with pytest.raises(AmountOutOfRange):
+         ceil_micro(Decimal(2**63))
++
++
++def test_round_micro_rejects_negative_with_typed_error() -> None:
++    # Imported inside the test on purpose: if the implementation is absent this must
++    # be a clean assertion failure, not a collection error. A collection error would
++    # be recorded as ERROR and dropped from the pass-rate denominator, which would
++    # silently inflate the measured pass rate.
++    from tollgate.domain.errors import InvalidAmount
++
++    assert issubclass(InvalidAmount, ValueError)
++    with pytest.raises(InvalidAmount):
++        round_micro(Decimal("-1"))
++    with pytest.raises(ValueError):
++        round_micro(Decimal("-1"))

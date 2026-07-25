@@ -28,12 +28,17 @@ fi
 RAW="$SPIKE/results/raw/${EXAM_ID}-${N}.json"
 mkdir -p "$(dirname "$RAW")"
 
+# `--settings` only adds settings on top of the user's `~/.claude/` config; it does not
+# replace it. `--setting-sources project` is what actually excludes user-level hooks,
+# plugins, and memory injection — without it, a memory plugin's growing store would vary
+# between sittings and be recorded as model variance.
 start=$(now_ms)
 set +e
 ( cd "$WT" && env -u ANTHROPIC_API_KEY "${HARNESS:-claude}" -p \
     --output-format json \
     --model claude-opus-4-8 \
     --settings "$SPIKE/empty-settings.json" \
+    --setting-sources project \
     --disable-slash-commands \
     --strict-mcp-config \
     --permission-mode acceptEdits \

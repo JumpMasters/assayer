@@ -22,7 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -45,15 +44,11 @@ jobs:
         run: ./scripts/coverage.sh 80
       # The coverage gate above is the one that blocks a merge; Codecov is a
       # reporting surface on top of it, so an upload failure must not fail CI.
-      # Until the repository is activated on codecov.io this step uploads and
-      # is rejected with "Repository not found", which is why the README
-      # carries no coverage badge yet: a badge reading "unknown" would be the
-      # first unbacked claim in a project about not making unbacked claims.
       - name: upload coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
           files: ./coverage.out
-          use_oidc: true
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
   lint:

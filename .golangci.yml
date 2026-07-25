@@ -1,0 +1,61 @@
+# golangci-lint configuration (schema v2).
+# Pinned to the same version the CI workflow installs.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # "standard" = errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+  enable:
+    - bodyclose      # HTTP response bodies must be closed
+    - copyloopvar    # loop-variable capture correctness
+    - errorlint      # correct error wrapping / comparison
+    - gocritic       # opinionated diagnostics
+    - gosec          # security-focused static analysis
+    - misspell       # spelling in comments and strings
+    - nilerr         # returning nil after a non-nil error
+    - revive         # style and documentation rules
+    - unconvert      # redundant type conversions
+    - unparam        # unused function parameters
+    - whitespace     # leading/trailing whitespace
+  # depguard is not enabled yet. It enforces the allowed edges of the internal
+  # import graph, and that graph does not exist until the package layout lands
+  # with the first phase of implementation. Enabling it now would mean writing
+  # rules about packages no one has written; it is added in the same change
+  # that creates the packages, alongside the AST import-guard test.
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: error-return
+        - name: error-strings
+        - name: context-as-argument
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - std-error-handling
+    rules:
+      # Test files may use less strict error handling and assertions.
+      - path: _test\.go
+        linters:
+          - gosec
+          - unparam
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/JumpTechCode/assayer

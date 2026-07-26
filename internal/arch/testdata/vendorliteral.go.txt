@@ -1,0 +1,5 @@
+package examiner
+
+// A harness-name check in a shared package. It imports nothing, so no
+// import-based rule can see it.
+const defaultHarness = "claude-code"

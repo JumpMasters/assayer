@@ -1,0 +1,5 @@
+package examiner
+
+// The same coupling spelled the way this project spells its own directory.
+// A segment-wise rule passes this while rejecting "claude-code".
+func claudecodeQuirk() bool { return true }

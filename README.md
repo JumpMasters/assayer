@@ -18,7 +18,7 @@ configuration. It reports what happened, as counts under named conditions.
 ## Status
 
 **There is no examining software here yet.** This repository contains the build,
-test, and security gates, five architecture decision records, the enforcement of
+test, and security gates, six architecture decision records, the enforcement of
 the package layout described in ADR-0005, and a binary that can print its own
 version. Everything below written in the future tense is unbuilt.
 
@@ -404,6 +404,9 @@ additionally runs [CodeQL](.github/workflows/codeql.yml). The toolchain is Go
 ```
 cmd/assayer          command entrypoint, one line
 internal/cli         command dispatch, output, and exit codes
+internal/assay       the harness-neutral representation of a session
+internal/port        the interfaces components are wired against
+internal/adapter     capture adapters and the conformance kit they must pass
 internal/buildinfo   version reporting for the running binary
 internal/arch        the architecture test that enforces ADR-0005
 docs/adr             architecture decision records
@@ -425,6 +428,7 @@ Significant or hard-to-reverse choices are recorded as
 - [0003 — Go, a single static binary, driving harness CLIs](docs/adr/0003-go-single-binary-driving-harness-clis.md)
 - [0004 — The conditions the S1 calibration was measured under](docs/adr/0004-s1-calibration-measurement-conditions.md)
 - [0005 — The internal package layout and how it is enforced](docs/adr/0005-internal-package-layout.md)
+- [0006 — The neutral session representation and the capture port](docs/adr/0006-session-representation.md)
 
 ## Contributing
 

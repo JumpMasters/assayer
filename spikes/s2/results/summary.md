@@ -182,6 +182,17 @@ at test time and never committed as literals.
   enough to export from. The committed conformance corpus of §13.1 stays Phase 1
   work.
 
+- **The subagent sidecar count disagrees with this spike's own pre-registration,
+  and neither figure can now be recovered.** The README states 962 sidecars
+  against 719 project-root transcripts, which sums to the 1,681 files used
+  everywhere else; this summary states 932 against the same 1,681 total, which
+  does not. A census on 2026-07-26 found 2,485 files (725 project-root, 1,760
+  sidecars), so the store has grown too much for a re-run to settle which
+  snapshot was right. The 95.6% attribution rate is reported as measured, but
+  its denominator is uncertain by about 3%, and no conclusion here should be
+  read as resting on the exact count. Recorded rather than corrected: choosing
+  one of two irreproducible numbers would be worse than saying they disagree.
+
 - **The store is live.** It grows and is pruned while being measured; record
   counts differ by a few hundred between the census and the conformance run for
   that reason. The figures are a snapshot on the measurement date and the scripts

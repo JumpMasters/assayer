@@ -3,6 +3,7 @@ package conformance
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/JumpMasters/assayer/internal/assay"
 	"github.com/JumpMasters/assayer/internal/port"
@@ -144,5 +145,69 @@ func TestZeroOutsideCapabilitiesCatchesAStrayValue(t *testing.T) {
 	bad := zeroOutsideCapabilities(&s)
 	if len(bad) == 0 {
 		t.Error("a cost was reported without CanSeeCost and the check did not notice")
+	}
+}
+
+// TestReferenceDiscoveryHonoursTheQuery covers the narrowings that exist so the
+// port did not have to be broken later to add them.
+func TestReferenceDiscoveryHonoursTheQuery(t *testing.T) {
+	ctx := context.Background()
+	r := Reference{}
+
+	all, err := r.Discover(ctx, port.Query{})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(all) == 0 {
+		t.Fatal("the zero query returned nothing; it is meant to mean everything")
+	}
+
+	t.Run("a later Since excludes it", func(t *testing.T) {
+		refs, err := r.Discover(ctx, port.Query{Since: all[0].At.Add(time.Hour)})
+		if err != nil {
+			t.Fatalf("Discover: %v", err)
+		}
+		if len(refs) != 0 {
+			t.Errorf("got %d refs for a session older than Since", len(refs))
+		}
+	})
+
+	t.Run("an earlier Since includes it", func(t *testing.T) {
+		refs, err := r.Discover(ctx, port.Query{Since: all[0].At.Add(-time.Hour)})
+		if err != nil {
+			t.Fatalf("Discover: %v", err)
+		}
+		if len(refs) != len(all) {
+			t.Errorf("got %d refs, want %d", len(refs), len(all))
+		}
+	})
+
+	t.Run("a matching Dir includes it", func(t *testing.T) {
+		refs, err := r.Discover(ctx, port.Query{Dir: "/work"})
+		if err != nil {
+			t.Fatalf("Discover: %v", err)
+		}
+		if len(refs) != len(all) {
+			t.Errorf("got %d refs for the session's own directory, want %d", len(refs), len(all))
+		}
+	})
+}
+
+// TestExemptFieldsAreOnlyAboutTheCapture guards the one hole in the coverage
+// rule. Exempting a field that describes the session, rather than the capture,
+// would remove it from the check without anybody deciding to.
+func TestExemptFieldsAreOnlyAboutTheCapture(t *testing.T) {
+	for _, key := range []string{"Fidelity.Adapter", "Fidelity.Observed", "Session.OrderComplete"} {
+		if !exempt(key) {
+			t.Errorf("%s should be exempt; it describes the capture, not the session", key)
+		}
+	}
+	for _, key := range []string{"Usage.CostMicroUSD", "Turn.Text", "Mutation.Before", "Lineage.ID"} {
+		if exempt(key) {
+			t.Errorf("%s must not be exempt; it is an observation about the session", key)
+		}
+		if _, ok := governed(key); !ok {
+			t.Errorf("%s is neither governed nor exempt", key)
+		}
 	}
 }

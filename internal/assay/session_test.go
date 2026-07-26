@@ -188,3 +188,58 @@ func TestUsageIsExclusiveOfDelegation(t *testing.T) {
 		t.Errorf("summed usage = %d, want 110", total)
 	}
 }
+
+// TestCapabilityTextCodec covers the path every committed artifact goes
+// through. Names are the only wire form, so a break here silently reinterprets
+// baselines rather than failing.
+func TestCapabilityTextCodec(t *testing.T) {
+	for _, c := range Capabilities() {
+		b, err := c.MarshalText()
+		if err != nil {
+			t.Fatalf("Capability(%v).MarshalText: %v", c, err)
+		}
+		if string(b) != c.String() {
+			t.Errorf("MarshalText = %q, String = %q; they must agree", b, c.String())
+		}
+		var got Capability
+		if err := got.UnmarshalText(b); err != nil {
+			t.Fatalf("Capability.UnmarshalText(%q): %v", b, err)
+		}
+		if got != c {
+			t.Errorf("round-trip: got %v, want %v", got, c)
+		}
+	}
+
+	// A value past the end of the enumeration has no name, and writing one
+	// would produce an artifact nothing can read back.
+	beyond := Capability(uint(len(Capabilities())) + 5)
+	if _, err := beyond.MarshalText(); err == nil {
+		t.Error("MarshalText accepted a capability outside the enumeration")
+	}
+	if beyond.String() != "unknown" {
+		t.Errorf("out-of-range capability names itself %q", beyond.String())
+	}
+
+	var bad Capability
+	if err := bad.UnmarshalText([]byte("clairvoyance")); err == nil {
+		t.Error("UnmarshalText accepted a name that is not a capability")
+	}
+}
+
+// TestCapabilitySetIgnoresOutOfRange pins that a value past the end of the
+// enumeration cannot be stored or reported. Silently wrapping it would set some
+// unrelated capability instead.
+func TestCapabilitySetIgnoresOutOfRange(t *testing.T) {
+	beyond := Capability(uint(len(Capabilities())) + 5)
+
+	var s CapabilitySet
+	if s.Has(beyond) {
+		t.Error("empty set reports an out-of-range capability")
+	}
+	if s.With(beyond) != s {
+		t.Error("With stored an out-of-range capability")
+	}
+	if s.With(beyond).Has(beyond) {
+		t.Error("an out-of-range capability was stored and reported")
+	}
+}

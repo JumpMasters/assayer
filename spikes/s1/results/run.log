@@ -1,60 +1,245 @@
-── a sitting 1/10
-a,1,1,1,0.14872049999999998,6,19566,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── a sitting 2/10
-a,2,1,1,0.14662,6,18933,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── a sitting 3/10
-a,3,1,1,0.14626799999999998,6,19907,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── a sitting 4/10
-a,4,1,1,0.156559,6,25106,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── a sitting 5/10
-a,5,1,1,0.1480345,6,20712,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── a sitting 6/10
-a,6,1,1,0.14662999999999998,6,19429,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── a sitting 7/10
-a,7,1,1,0.145112,6,19688,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── a sitting 8/10
-a,8,1,1,0.14492549999999998,6,19024,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── a sitting 9/10
-a,9,1,1,0.145173,6,19114,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── a sitting 10/10
-a,10,1,1,0.1486195,6,20082,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── b sitting 1/10
-b,1,1,1,0.21901800000000002,6,55491,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── b sitting 2/10
-b,2,1,1,0.230387,7,55789,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── b sitting 3/10
-b,3,1,1,0.23410749999999997,7,46156,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── b sitting 4/10
-b,4,1,1,0.25319149999999996,7,49577,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── b sitting 5/10
-b,5,0,0,0.37556599999999996,12,76729,claude-haiku-4-5-20251001|claude-opus-4-8,2,2,1,end_turn
-── b sitting 6/10
-b,6,1,1,0.2414165,7,47669,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── b sitting 7/10
-b,7,1,1,0.2808275,8,77417,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── b sitting 8/10
-b,8,1,1,0.22833550000000002,7,54657,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── b sitting 9/10
-b,9,1,1,0.2192575,7,54027,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── b sitting 10/10
-b,10,1,1,0.2404175,8,45547,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 1/10
-c,1,1,1,0.282745,10,71940,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 2/10
-c,2,1,1,0.6578059999999999,16,152631,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 3/10
-c,3,1,1,0.29547049999999997,10,84271,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 4/10
-c,4,1,1,0.503039,16,147755,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 5/10
-c,5,1,1,0.6924625,17,171935,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 6/10
-c,6,1,1,0.273797,11,60493,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 7/10
-c,7,1,1,0.3287015,13,66489,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 8/10
-c,8,1,1,0.526228,15,142629,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 9/10
-c,9,1,1,0.7392569999999999,19,161287,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
-── c sitting 10/10
-c,10,1,1,0.348193,13,100742,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+skip a/1
+skip a/2
+skip a/3
+skip a/4
+skip a/5
+skip a/6
+skip a/7
+skip a/8
+skip a/9
+skip a/10
+── a sitting 11/35
+a,11,1,1,0.1451035,6,20090,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 12/35
+a,12,1,1,0.144015,6,18998,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 13/35
+a,13,1,1,0.146449,6,20032,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 14/35
+a,14,1,1,0.14940399999999998,6,21089,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 15/35
+a,15,1,1,0.14520349999999999,6,18989,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 16/35
+a,16,1,1,0.1462285,6,24251,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 17/35
+a,17,1,1,0.1460725,6,20049,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 18/35
+a,18,1,1,0.1458585,6,20084,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 19/35
+a,19,1,1,0.1480575,6,20034,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 20/35
+a,20,1,1,0.1467685,6,20023,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 21/35
+a,21,1,1,0.1691495,7,41956,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 22/35
+a,22,1,1,0.15028249999999999,6,22163,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 23/35
+a,23,1,1,0.15358549999999999,6,21139,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 24/35
+a,24,1,1,0.14596900000000002,6,21091,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 25/35
+a,25,1,1,0.17923250000000002,7,28475,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 26/35
+a,26,1,1,0.171668,7,26353,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 27/35
+a,27,1,1,0.1575605,6,23227,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 28/35
+a,28,1,1,0.14711849999999999,6,26429,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 29/35
+a,29,1,1,0.146226,6,21204,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 30/35
+a,30,1,1,0.1458915,6,19969,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 31/35
+a,31,1,1,0.145862,6,25210,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 32/35
+a,32,1,1,0.14654299999999998,6,19961,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 33/35
+a,33,1,1,0.2293905,8,35725,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 34/35
+a,34,1,1,0.1471255,6,20974,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── a sitting 35/35
+a,35,1,1,0.251498,9,41108,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+skip b/1
+skip b/2
+skip b/3
+skip b/4
+skip b/5
+skip b/6
+skip b/7
+skip b/8
+skip b/9
+skip b/10
+── b sitting 11/35
+b,11,1,1,0.238335,8,57583,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 12/35
+b,12,0,0,0.30735199999999996,9,61035,claude-haiku-4-5-20251001|claude-opus-4-8,1,2,1,end_turn
+── b sitting 13/35
+b,13,1,1,0.223098,7,54379,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 14/35
+b,14,1,1,0.27786099999999997,8,52504,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 15/35
+b,15,1,1,0.25336800000000004,8,50328,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 16/35
+b,16,1,1,0.2649725,9,64810,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 17/35
+b,17,1,1,0.251875,7,61069,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 18/35
+b,18,0,0,0.300307,8,72688,claude-haiku-4-5-20251001|claude-opus-4-8,1,2,1,end_turn
+── b sitting 19/35
+b,19,1,1,0.26330099999999995,8,57711,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 20/35
+b,20,1,1,0.23597600000000002,7,46123,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 21/35
+b,21,1,1,0.246058,7,63821,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 22/35
+b,22,1,1,0.274986,7,70044,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 23/35
+b,23,1,1,0.2357375,7,60217,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 24/35
+b,24,1,1,0.2433515,7,52911,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 25/35
+b,25,0,0,0.2986345,8,62426,claude-haiku-4-5-20251001|claude-opus-4-8,1,2,1,end_turn
+── b sitting 26/35
+b,26,1,1,0.25616999999999995,7,61160,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 27/35
+b,27,1,1,0.2468805,8,60020,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 28/35
+b,28,1,1,0.2467275,7,49505,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 29/35
+b,29,1,1,0.2404885,7,62991,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 30/35
+b,30,1,1,0.268265,8,65097,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 31/35
+b,31,1,1,0.240084,7,54704,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 32/35
+b,32,1,1,0.241045,8,47413,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 33/35
+b,33,1,0,0.295636,8,61160,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 34/35
+b,34,1,1,0.2540525,8,51540,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── b sitting 35/35
+b,35,1,1,0.22830699999999998,7,43212,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+skip c/1
+skip c/2
+skip c/3
+skip c/4
+skip c/5
+skip c/6
+skip c/7
+skip c/8
+skip c/9
+skip c/10
+── c sitting 11/35
+c,11,1,1,0.31926099999999996,12,103454,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 12/35
+c,12,1,1,0.2813689999999999,11,69142,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 13/35
+c,13,0,0,0.45036299999999996,15,113365,claude-haiku-4-5-20251001|claude-opus-4-8,1,2,1,end_turn
+── c sitting 14/35
+c,14,1,1,0.26286299999999996,10,54633,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 15/35
+c,15,1,1,0.439976,12,94445,claude-opus-4-8|claude-haiku-4-5-20251001,0,2,0,end_turn
+── c sitting 16/35
+c,16,1,1,0.5179969999999999,16,137557,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 17/35
+c,17,1,1,0.27207250000000005,10,55641,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 18/35
+c,18,1,1,0.3284415,12,67230,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 19/35
+c,19,1,1,0.2622285,10,71149,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 20/35
+c,20,1,1,0.26657200000000003,10,71192,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 21/35
+c,21,1,1,0.4178225,13,100726,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 22/35
+c,22,1,1,0.3866649999999999,13,99559,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 23/35
+c,23,1,1,0.4752035,16,110380,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 24/35
+c,24,1,1,0.25973650000000004,10,52532,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 25/35
+c,25,1,1,0.271989,10,58800,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 26/35
+c,26,1,1,0.32769049999999994,12,104503,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 27/35
+c,27,1,1,0.273877,10,56922,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 28/35
+c,28,1,1,0.7200545,16,166010,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 29/35
+c,29,1,1,0.32511500000000004,12,82748,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 30/35
+c,30,1,1,0.5434475000000001,16,141400,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 31/35
+c,31,1,1,0.263957,10,59928,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 32/35
+c,32,1,1,0.665088,15,157586,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 33/35
+c,33,1,1,0.401038,13,88035,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 34/35
+c,34,1,1,0.27788300000000005,10,70159,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+── c sitting 35/35
+c,35,1,1,0.296343,11,75508,claude-haiku-4-5-20251001|claude-opus-4-8,0,2,0,end_turn
+skip d/1
+skip d/2
+skip d/3
+skip d/4
+skip d/5
+── d sitting 6/35
+d,6,0,0,0.77711,25,171819,claude-haiku-4-5-20251001|claude-opus-4-8,1,4,1,end_turn
+── d sitting 7/35
+d,7,1,1,0.6059685,24,153977,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 8/35
+d,8,1,1,0.5905705,23,157020,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 9/35
+d,9,1,1,0.587491,21,131541,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 10/35
+d,10,0,0,0.678352,27,170906,claude-haiku-4-5-20251001|claude-opus-4-8,1,4,1,end_turn
+── d sitting 11/35
+d,11,0,0,0.44283749999999994,20,95592,claude-haiku-4-5-20251001|claude-opus-4-8,1,4,1,end_turn
+── d sitting 12/35
+d,12,1,1,0.6934100000000001,26,158154,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 13/35
+d,13,1,1,0.5862970000000001,24,121936,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 14/35
+d,14,1,1,0.5796595000000002,23,154035,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 15/35
+d,15,1,1,0.539719,22,147677,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 16/35
+d,16,1,1,0.48658349999999995,20,119661,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 17/35
+d,17,1,1,0.8704769999999998,26,273265,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 18/35
+d,18,1,1,0.5363399999999999,21,115705,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 19/35
+d,19,1,1,0.42105850000000006,19,94615,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 20/35
+d,20,1,1,0.565709,24,132234,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 21/35
+d,21,1,1,0.5282405000000001,22,141417,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 22/35
+d,22,1,1,0.5100895,21,98754,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 23/35
+d,23,1,1,0.46454599999999996,20,111212,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 24/35
+d,24,1,1,0.499002,19,130307,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 25/35
+d,25,1,1,0.4945314999999999,20,114391,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 26/35
+d,26,1,1,0.643242,24,156412,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 27/35
+d,27,1,1,0.5120910000000001,20,117559,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 28/35
+d,28,1,1,0.5951145,24,157122,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 29/35
+d,29,1,1,0.5493155,24,130159,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 30/35
+d,30,1,1,0.636551,24,165564,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 31/35
+d,31,1,1,0.6336115,23,164529,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 32/35
+d,32,1,1,0.5415195,22,120636,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 33/35
+d,33,1,1,0.5514455,22,136683,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 34/35
+d,34,1,1,0.5910559999999999,22,165609,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn
+── d sitting 35/35
+d,35,1,1,0.621288,23,161326,claude-haiku-4-5-20251001|claude-opus-4-8,0,4,0,end_turn

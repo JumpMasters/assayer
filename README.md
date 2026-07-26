@@ -49,11 +49,12 @@ shipping an instrument if it will not hold its own first measurement to the
 standard it asks of everyone else's.
 
 That measurement has now been taken, and the numbers are in [Calibration
-numbers](#calibration-numbers) below. Thirty replays across three exams
-reproduced their deterministic assertions every time, at a median cost of $0.15
-to $0.43 per replay depending on the task. The bar is met on every clause as a
-point estimate — with the caveat, stated there rather than omitted, that ten
-replays cannot establish a 90% floor however they come out.
+numbers](#calibration-numbers) below. Across four exams replayed thirty-five
+times each, deterministic assertions reproduced in 131 of 132 scored replays, at
+a median cost of $0.15 to $0.57 per replay depending on the task. The bar is met
+on every clause as a point estimate. Stated there rather than omitted: only one
+of the four exams has a 95% lower bound at or above 90%, so this establishes a
+high reproduction rate and not a 90% floor for every exam.
 
 The scaffolding that produced them is committed under `spikes/`. It is not
 product code and is held to a lower standard than the rest of this repository,
@@ -218,39 +219,55 @@ recorded because each one is individually tempting to remove.
 
 ## Calibration numbers
 
-Measured 2026-07-25. Three exams, ten replays each, fixed conditions:
-`claude-opus-4-8`, one git worktree per replay at a pinned commit, one
-fail-to-pass assertion plus an 82-file no-regression suite. Method, raw rows,
-and the full reading are under [`spikes/s1/`](spikes/s1/); the table below
-regenerates with `python3 spikes/s1/analyze.py`.
+Measured 2026-07-25. Four exams, thirty-five replays each, fixed conditions:
+`claude-opus-4-8`, one git worktree per replay at a pinned commit, exam-supplied
+fail-to-pass tests plus an 82-file no-regression suite. Method, raw rows, and
+the full reading are under [`spikes/s1/`](spikes/s1/); the table regenerates
+with `python3 spikes/s1/analyze.py`.
 
-| Exam | Scored | Errors | Assertions reproduced | Cost per replay (median) | Cost spread | Turns |
-| --- | --- | --- | --- | --- | --- | --- |
-| A — bounded fix | 10 | 0 | 10 of 10 | $0.147 | 1.08× | 6 every time |
-| B — feature slice | 9 | 1 | 9 of 9 | $0.234 | 1.28× | 6–8 |
-| C — design latitude | 10 | 0 | 10 of 10 | $0.426 | 2.70× | 10–19 |
+| Exam | Replays | Errors | Scored | Reproduced | Rate | 95% lower bound | Cost per replay |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A — bounded fix, pointed | 35 | 0 | 35 | 35 | 100% | **90.11%** | $0.147 |
+| B — feature slice, pointed | 35 | 4 | 31 | 30 | 96.8% | 83.81% | $0.243 |
+| C — design latitude | 35 | 1 | 34 | 34 | 100% | 89.85% | $0.328 |
+| D — discovery, unpointed | 35 | 3 | 32 | 32 | 100% | 89.28% | $0.573 |
 
-Thirty replays cost $8.65 in total. The one error was a permission stall; it is
-excluded from the counts above rather than recorded as a failure.
+140 replays cost $48.50 in total. Eight ended in a permission stall and are
+recorded as errors, excluded from the counts rather than charged to the model.
 
-**What this supports.** No replay failed its deterministic assertions, and the
-file footprint was identical across all thirty. Effort was a different matter:
-the cost spread widened with how much latitude the task allowed, and on the
-most open-ended exam the same task ran from 10 to 19 turns and varied 2.7-fold
-in cost. Outcome-level assertions look stable enough to build on; token-level
-ones do not.
+**What this supports.** Deterministic assertions reproduced in 131 of 132 scored
+replays. The one failure is a true positive: that replay passed its own
+fail-to-pass test and broke an existing test by changing code it had not been
+asked to touch. Only the broad no-regression suite caught it — its file
+footprint was identical to every passing replay of the same exam, so a
+footprint-based scope check would have missed it.
 
-**What this does not support.** Ten replays cannot establish a 90% floor. A
-result of ten out of ten carries a 95% interval of 72% to 100%, so these numbers
-say "no failure observed in ten replays" and not "at least 90%". Separating 90%
-from 99% needs more replays than this measurement bought.
+**What this does not support.** The pre-registered bar in [Status](#status) is
+met on every clause as a point estimate, but only **one** of the four exams has
+a 95% lower bound at or above 90%. The bounds are given to two decimals because
+C's is 89.85%, which rounds to 90% and is not 90%; rounding a lower bound up is
+the one direction this measurement cannot afford. A point estimate meeting a
+floor is not the same as establishing it. These numbers establish that
+assertions reproduce at a high rate, and only exam A supports the stronger
+claim.
 
-The pre-registered bar in [Status](#status) is met on every clause as a point
-estimate, with that caveat attached. Two consequences already follow: a
-cost band cannot use one global multiple across exams of different latitude, and
-a single session is a weak cost anchor — on exam C the golden session happened
-to fall at the 10th percentile of its own replays, which accounts for most of
-its apparent cost growth.
+**Cost dispersion appears to track ambiguity more than effort.** Exam C, where
+many different implementations are correct, is the outlier on every measure: a
+coefficient of variation of 0.38 against 0.07–0.15 for the others, and a p90/p10
+cost ratio of 2.58 against 1.20–1.35. Exam D is the control — it costs four
+times exam A and takes three times the turns, and disperses more than A but far
+less than C. Stated as a hypothesis rather than a result: four exams in one
+repository is thin evidence, and C is a single point carrying most of the
+contrast.
+
+Two consequences follow for the design: a baseline-relative cost band cannot use
+one global multiple, and an exam's band does not appear predictable from its
+cost or difficulty, so it has to be calibrated from that exam's own series.
+
+An earlier version of this section reported ten replays of three exams. That
+sample understated dispersion on every exam and observed no failures at all;
+both errors ran optimistic. A ten-replay series is enough to detect a gross
+regression and not enough to characterise a distribution.
 
 The exams were written to be single-goal because no such session existed in the
 available history, so these figures are an optimistic bound. The full list of

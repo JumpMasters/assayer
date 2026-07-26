@@ -115,6 +115,17 @@ credential adjacent to a match was printed in the clear. Redaction has to be a
 whole-document operation. A per-finding redactor that rewrites matches in place
 will export a fixture with the secret next to the one it removed.
 
+**And one from trying to commit the corpus.** The planted secrets were first
+written as literals, and GitHub's push protection refused the push — correctly,
+on the Slack plant. A committed planted-secret corpus fights every scanner it
+meets: the host's push protection, the repository's own secret scanning, and
+whatever the developer runs locally. The only ways through are to allowlist real
+detections or to disable scanning, and both are worse than the corpus. The
+plants are now assembled from fragments at run time, so no contiguous string in
+the file matches a scanner, and the detector finds nothing in its own source.
+The design proposes exactly this corpus running in CI; it has to be synthesised
+at test time and never committed as literals.
+
 ## Consequences for the design
 
 - **Fail closed on shape and record type, not on the version string.** Every key
@@ -146,6 +157,10 @@ will export a fixture with the secret next to the one it removed.
   author of the patterns.
 
 - **Redact whole documents.** Per-match rewriting leaves adjacent secrets intact.
+
+- **Synthesise the planted corpus; never commit it.** Literal plants are refused
+  by push protection and flagged by repository scanning, and the escape hatches
+  are worse than the corpus.
 
 ## Disclosures
 

@@ -43,3 +43,7 @@ docs/superpowers/
 spikes/s1/sessions/
 spikes/s1/results/raw/
 spikes/s3/results/raw/
+
+# Python bytecode from the spike scripts
+__pycache__/
+*.pyc

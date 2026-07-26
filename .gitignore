@@ -42,3 +42,4 @@ docs/superpowers/
 # carry tool outputs, absolute paths, and environment state.
 spikes/s1/sessions/
 spikes/s1/results/raw/
+spikes/s3/results/raw/

@@ -273,6 +273,40 @@ The exams were written to be single-goal because no such session existed in the
 available history, so these figures are an optimistic bound. The full list of
 disclosures is in [`spikes/s1/results/summary.md`](spikes/s1/results/summary.md).
 
+## Distilling a real session
+
+The calibration exams above were written by hand, which leaves the method's
+central assumption untested: that a real session can be turned into a replayable
+exam at all. Measured 2026-07-26 on one session from this machine's own history
+— nine human turns over twelve and a half hours, two goals, and a mid-session
+exchange that changed what got built. Method and raw rows are under
+[`spikes/s3/`](spikes/s3/); the protocol and pass bar were committed before any
+replay ran.
+
+The distilled exam reproduced in **20 of 20 replays** across two arms, at a
+median of $1.91 per replay. The second arm exists because the first proved
+less than it appeared to: a replay runs in a git worktree of the real
+repository, so the commit the exam was distilled from was one `git show` away.
+The second arm removed that history and changed nothing else. It reproduced
+just as well, which is what makes the first arm's result readable.
+
+**Where the instruction turned out to live.** The session opens with the two
+words `plan 15`, pointing at a file that is gitignored and no longer exists.
+What actually got built was something else, because four minutes in the agent
+asked a question and the human answered `1`. Both are recoverable — but from
+tool inputs and tool results, not from anything the user typed. Across 54
+sessions on this machine, 39% of human turns are four words or fewer, and the
+median session's median turn is seven words. Steering is mostly pointers and
+approvals; the content sits elsewhere in the transcript.
+
+**What this does not show.** That distillation can be automated. The instruction
+here was written by hand, and one session in one repository is not a sample.
+What it establishes is narrower and was worth establishing first: a real
+session's work can be posed as a replayable exam, and everything that posing it
+required was present in the artefacts a tool would actually hold. The
+disclosures are in
+[`spikes/s3/results/summary.md`](spikes/s3/results/summary.md).
+
 ## Roadmap
 
 Ordered by dependency. No dates: the order is a commitment, the schedule is not.

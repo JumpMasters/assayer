@@ -1,0 +1,21 @@
+control repo: /private/tmp/claude-501/-Users-ariklevinsky-Documents-Projects-proctor/ce30cbd9-b7d4-4f24-b3a4-38d0026167b7/scratchpad/tollgate-base @ 2df55f3 (1 commit)
+── s3ctl replay 1/10  (03:22:43)
+s3ctl,1,1,1,1.364847,39,206350,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn
+── s3ctl replay 2/10  (03:26:18)
+s3ctl,2,1,1,2.5033715,38,298041,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn
+── s3ctl replay 3/10  (03:31:25)
+s3ctl,3,1,1,1.8485680000000002,45,238056,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn
+── s3ctl replay 4/10  (03:35:32)
+s3ctl,4,1,1,1.9717765000000003,40,322200,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn
+── s3ctl replay 5/10  (03:41:04)
+s3ctl,5,1,1,1.7274722499999997,35,269515,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn
+── s3ctl replay 6/10  (03:45:42)
+s3ctl,6,1,1,2.773817250000001,43,350546,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn
+── s3ctl replay 7/10  (03:51:41)
+s3ctl,7,1,1,1.49176,37,247399,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn
+── s3ctl replay 8/10  (03:55:58)
+s3ctl,8,1,1,2.1725494999999997,42,319184,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn
+── s3ctl replay 9/10  (04:01:26)
+s3ctl,9,1,1,1.99615725,39,353933,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn
+── s3ctl replay 10/10  (04:07:29)
+s3ctl,10,1,1,1.83284025,37,285346,claude-haiku-4-5-20251001|claude-opus-4-8,0,11,0,end_turn

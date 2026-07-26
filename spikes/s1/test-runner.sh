@@ -68,20 +68,34 @@ chmod +x "$TMP/pytest-stub.sh"
 EXAMP="$TMP/exam-pytest"; cp -R "$EXAM" "$EXAMP"
 printf 'tests/test_stub.py::test_one\n' > "$EXAMP/f2p.txt"
 
-# $1 = stub pytest exit code, $2 = expected f2p_pass, $3 = expected is_error
+# $1 = stub pytest exit code, $2 = expected f2p_pass, $3 = expected is_error,
+# $4 = COLLECT_ERROR_IS_FAIL (default 0)
 check_rc() {
-  local csv="$TMP/pytest-$1.csv"
+  local policy="${4:-0}" csv="$TMP/pytest-$1-${4:-0}.csv"
   PYTEST_RC="$1" PYTEST="$TMP/pytest-stub.sh" HARNESS="$SPIKE/fixtures/stub-harness.sh" \
-    bash "$SPIKE/run-sitting.sh" "$EXAMP" "9$1" "$csv"
-  echo "row (pytest rc=$1): $(cat "$csv")"
+    COLLECT_ERROR_IS_FAIL="$policy" \
+    bash "$SPIKE/run-sitting.sh" "$EXAMP" "9$1$policy" "$csv"
+  echo "row (pytest rc=$1, collect_error_is_fail=$policy): $(cat "$csv")"
   IFS=, read -r _ _ f2p _ _ _ _ _ _ _ err _ <<<"$(cat "$csv")"
   [ "$f2p" = "$2" ] && [ "$err" = "$3" ] \
-    || { echo "FAIL: pytest rc=$1 gave f2p=$f2p err=$err, want f2p=$2 err=$3"; exit 1; }
+    || { echo "FAIL: pytest rc=$1 policy=$policy gave f2p=$f2p err=$err, want f2p=$2 err=$3"; exit 1; }
 }
 check_rc 0 1 0   # clean pass
 check_rc 1 0 0   # genuine failed assertion
 check_rc 4 0 1   # measured: pytest exits 4 for a node id or file that no longer exists
+check_rc 2 0 1   # measured: pytest exits 2 when a directory hits a collection error
+check_rc 3 0 1   # internal error stays ERROR under either policy
 echo "PASS (pytest exit codes)"
+
+# With the exam supplying its own tests, a collection error is the replay's source, not
+# our plumbing — so 2 and 4 become FAIL. 3 and every other code must stay ERROR, or the
+# narrowing would have swallowed the invariant it was carved out of.
+check_rc 4 0 0 1
+check_rc 2 0 0 1
+check_rc 3 0 1 1
+check_rc 1 0 0 1
+check_rc 0 1 0 1
+echo "PASS (COLLECT_ERROR_IS_FAIL narrows only the collection codes)"
 
 # A declared node file that is missing is a script fault, not a passing set.
 EXAMM="$TMP/exam-missing"; cp -R "$EXAM" "$EXAMM"; rm "$EXAMM/f2p.txt"

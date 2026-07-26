@@ -1,0 +1,9 @@
+{
+  "cost_usd": 0.6704735,
+  "num_turns": 25,
+  "canonical_model": "claude-opus-4-8",
+  "session_id": "dddddddd-0000-4000-8000-00000000002d",
+  "captured": "2026-07-25",
+  "cost_source": "total_cost_usd from the session's own result JSON",
+  "steering": "agent-driven, single turn, no corrections needed"
+}

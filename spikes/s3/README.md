@@ -129,6 +129,41 @@ The golden session's cost is not a usable baseline here — it spans a design
 negotiation, a pull request, and a CI wait that the exam does not ask for — and
 saying so is one of the things this spike is for.
 
+## Amendment, recorded before the first replay
+
+Building the exam surfaced a scoring flaw, fixed before any replay was run and
+written down here rather than discovered afterwards in the numbers.
+
+The golden commit's unit tests construct `ModelPrice(...)` in module-level
+fixtures. A replay that does not add the new field — or adds it under a
+different name — therefore fails at *collection*: pytest exits 4 for a single
+node id and 2 for a directory. S1's runner maps every code other than 0 and 1 to
+`ERROR`, deliberately, because a missing node id normally means a rotted pin and
+a rotted pin must never read as a regression.
+
+Here it would have meant the opposite of what the bar intends. Naming divergence
+is the failure mode this spike most wants to observe, and it would have been
+recorded as an error, excluded from the denominator, and quietly made clause 1
+easier to pass the worse the distillation performed.
+
+The fix, in `s1/run-sitting.sh` behind `COLLECT_ERROR_IS_FAIL`, off by default so
+S1's own semantics are untouched: when the exam supplies its own tests via
+`tests.patch` — already applied successfully by the runner — and those tests are
+verified to collect and pass against the golden solution, the tests are certainly
+present, so a collection error is the subject failing rather than Assayer's
+plumbing. That is a `FAIL`. Internal errors, timeouts, permission stalls and cap
+hits stay `ERROR`. `s1/test-runner.sh` covers both policies.
+
+Both preconditions were checked before enabling it, at the base commit and at the
+golden commit under the exam's own conditions:
+
+| | |
+|---|---|
+| Golden solution, 8 fail-to-pass node ids | all pass |
+| Golden solution, `tests/unit` | 419 passed |
+| Base commit, 8 fail-to-pass node ids | all fail — the exam is not vacuous |
+| Base commit, an untouched unit file | passes — the failure is the pin, not the environment |
+
 ## If it fails
 
 A failure is a result, not a setback, and it lands before Phase 1 rather than

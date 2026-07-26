@@ -1,0 +1,292 @@
+diff --git a/tests/unit/sdk/test_client.py b/tests/unit/sdk/test_client.py
+index 28dee2a..5008031 100644
+--- a/tests/unit/sdk/test_client.py
++++ b/tests/unit/sdk/test_client.py
+@@ -109,7 +109,9 @@ async def test_commit_sends_the_wire_shape_and_parses_the_result() -> None:
+     client = _client(httpx.MockTransport(handler))
+     result = await client.commit(
+         reservation_id="res-1",
+-        usage=ProviderUsage(input_tokens=100, output_tokens=50, cached_input_tokens=10),
++        usage=ProviderUsage(
++            input_tokens=100, output_tokens=50, cached_input_tokens=10, cache_creation_tokens=5
++        ),
+         idempotency_key="idem-c",
+     )
+     assert result.committed_micro == 200
+@@ -118,7 +120,12 @@ async def test_commit_sends_the_wire_shape_and_parses_the_result() -> None:
+     assert seen["idem"] == "idem-c"
+     assert seen["body"] == {
+         "reservation_id": "res-1",
+-        "usage": {"input_tokens": 100, "output_tokens": 50, "cached_input_tokens": 10},
++        "usage": {
++            "input_tokens": 100,
++            "output_tokens": 50,
++            "cached_input_tokens": 10,
++            "cache_creation_tokens": 5,
++        },
+     }
+ 
+ 
+diff --git a/tests/unit/sdk/test_guard.py b/tests/unit/sdk/test_guard.py
+index 551dde9..73e5244 100644
+--- a/tests/unit/sdk/test_guard.py
++++ b/tests/unit/sdk/test_guard.py
+@@ -71,13 +71,13 @@ async def test_reserve_then_commit_on_clean_exit_with_usage() -> None:
+     async with _guard(client) as call:
+         assert call.reservation_id == "res-1"
+         assert call.estimated_micro == 300
+-        call.record_usage(input_tokens=90, output_tokens=40)
++        call.record_usage(input_tokens=90, output_tokens=40, cache_creation_tokens=3)
+     assert client.reserved is not None
+     # input bound = 2 tokens + default margin 16 = 18
+     assert client.reserved["input_bound_tokens"] == 18
+     assert client.reserved["max_output_tokens"] == 100
+     assert client.committed == ProviderUsage(
+-        input_tokens=90, output_tokens=40, cached_input_tokens=0
++        input_tokens=90, output_tokens=40, cached_input_tokens=0, cache_creation_tokens=3
+     )
+     assert client.cancelled is False
+ 
+diff --git a/tests/unit/test_api_commands.py b/tests/unit/test_api_commands.py
+index 4df4efb..9e56688 100644
+--- a/tests/unit/test_api_commands.py
++++ b/tests/unit/test_api_commands.py
+@@ -216,7 +216,10 @@ def test_commit_translates_the_wire_into_the_command() -> None:
+     client = TestClient(_app(commit_handler=stub))
+     response = client.post(
+         "/v1/commit",
+-        json={"reservation_id": "r1", "usage": {"input_tokens": 100, "output_tokens": 50}},
++        json={
++            "reservation_id": "r1",
++            "usage": {"input_tokens": 100, "output_tokens": 50, "cache_creation_tokens": 7},
++        },
+         headers=_AUTH_HEADERS,
+     )
+     assert response.status_code == 200
+@@ -225,8 +228,11 @@ def test_commit_translates_the_wire_into_the_command() -> None:
+     assert command == CommitCommand(
+         idempotency_key="idem-1",
+         reservation_id=ReservationId("r1"),
+-        usage=ProviderUsage(input_tokens=100, output_tokens=50, cached_input_tokens=0),
++        usage=ProviderUsage(
++            input_tokens=100, output_tokens=50, cached_input_tokens=0, cache_creation_tokens=7
++        ),
+     )
++    assert command.usage.cache_creation_tokens == 7
+ 
+ 
+ def test_cancel_translates_the_wire_into_the_command() -> None:
+diff --git a/tests/unit/test_commit.py b/tests/unit/test_commit.py
+index 5f69189..40809a1 100644
+--- a/tests/unit/test_commit.py
++++ b/tests/unit/test_commit.py
+@@ -53,6 +53,7 @@ _PRICE = ModelPrice(
+     input_micro_per_token=Decimal("1"),
+     output_micro_per_token=Decimal("2"),
+     cached_input_micro_per_token=Decimal("0.5"),
++    cache_creation_micro_per_token=Decimal("1.25"),
+ )
+ _RECORD = ReservationRecord(
+     reservation_id=ReservationId("res-1"),
+@@ -472,6 +473,20 @@ async def test_commit_of_a_reaped_reservation_self_heals() -> None:
+     assert uow.committed is True
+ 
+ 
++async def test_commit_prices_cache_creation_tokens() -> None:
++    # _PRICE has input=1, output=2, cached=0.5, cache_creation=1.25.
++    # usage: 100 in / 20 cache-read / 50 out / 40 cache-creation
++    #   (100-20)*1 + 20*0.5 + 50*2 + 40*1.25 = 80 + 10 + 100 + 50 = 240 (was 190 without creation)
++    usage = ProviderUsage(
++        input_tokens=100, output_tokens=50, cached_input_tokens=20, cache_creation_tokens=40
++    )
++    handler, _uow = _build()
++    result = await handler.commit(_auth(), _command(usage=usage))
++    assert result == CommitResult(
++        reservation_id=ReservationId("res-1"), committed_micro=240, overage_micro=0
++    )
++
++
+ def test_commit_fingerprint_is_stable_and_usage_sensitive() -> None:
+     principal = _principal()
+     base = _command()
+@@ -479,3 +494,12 @@ def test_commit_fingerprint_is_stable_and_usage_sensitive() -> None:
+     assert commit_fingerprint(principal, base) != commit_fingerprint(
+         principal, _command(usage=ProviderUsage(input_tokens=100, output_tokens=51))
+     )
++
++
++def test_commit_fingerprint_is_sensitive_to_cache_creation_tokens() -> None:
++    principal = _principal()
++    base = _command(usage=ProviderUsage(input_tokens=100, output_tokens=50))
++    more = _command(
++        usage=ProviderUsage(input_tokens=100, output_tokens=50, cache_creation_tokens=10)
++    )
++    assert commit_fingerprint(principal, base) != commit_fingerprint(principal, more)
+diff --git a/tests/unit/test_grace.py b/tests/unit/test_grace.py
+index 8120a28..bb8e98d 100644
+--- a/tests/unit/test_grace.py
++++ b/tests/unit/test_grace.py
+@@ -56,6 +56,7 @@ _PRICE = ModelPrice(
+     input_micro_per_token=Decimal("1"),
+     output_micro_per_token=Decimal("2"),
+     cached_input_micro_per_token=Decimal("0.5"),
++    cache_creation_micro_per_token=Decimal("1.25"),
+ )
+ _PRICED = PricedModel(version="2026-06-22", price=_PRICE)
+ _USER_NODE = BudgetNode(BudgetId("b-user"), ScopeKind.USER, "u1")
+@@ -404,3 +405,14 @@ def test_grace_backfill_fingerprint_is_stable_and_command_sensitive() -> None:
+     assert grace_backfill_fingerprint(principal, base) != grace_backfill_fingerprint(
+         principal, _command(project_id=ProjectId("proj-1"))
+     )
++
++
++def test_grace_fingerprint_is_sensitive_to_cache_creation_tokens() -> None:
++    principal = _principal()
++    base = _command(usage=ProviderUsage(input_tokens=100, output_tokens=50))
++    more = _command(
++        usage=ProviderUsage(input_tokens=100, output_tokens=50, cache_creation_tokens=10)
++    )
++    assert grace_backfill_fingerprint(principal, base) != grace_backfill_fingerprint(
++        principal, more
++    )
+diff --git a/tests/unit/test_pricing.py b/tests/unit/test_pricing.py
+index 679f42b..0fa3b29 100644
+--- a/tests/unit/test_pricing.py
++++ b/tests/unit/test_pricing.py
+@@ -25,6 +25,7 @@ PRICE = ModelPrice(
+     input_micro_per_token=Decimal("2.5"),
+     output_micro_per_token=Decimal("10"),
+     cached_input_micro_per_token=Decimal("1.25"),
++    cache_creation_micro_per_token=Decimal("1.25"),
+ )
+ 
+ 
+@@ -43,6 +44,7 @@ def test_model_price_rejects_cached_rate_above_input_rate() -> None:
+             input_micro_per_token=Decimal("2.5"),
+             output_micro_per_token=Decimal("10"),
+             cached_input_micro_per_token=Decimal("3.0"),
++            cache_creation_micro_per_token=Decimal("1.25"),
+         )
+ 
+ 
+@@ -54,6 +56,7 @@ def test_model_price_rejects_negative_rate() -> None:
+             input_micro_per_token=Decimal("-1"),
+             output_micro_per_token=Decimal("10"),
+             cached_input_micro_per_token=Decimal("0"),
++            cache_creation_micro_per_token=Decimal("1.25"),
+         )
+ 
+ 
+@@ -69,6 +72,7 @@ def test_estimate_rounds_up_to_cover_the_worst_case() -> None:
+         input_micro_per_token=Decimal("0.4"),
+         output_micro_per_token=Decimal("0"),
+         cached_input_micro_per_token=Decimal("0"),
++        cache_creation_micro_per_token=Decimal("1.25"),
+     )
+     # 0.4 * 1 + 0 → 0.4 → the estimate ceilings up so it never under-reserves (#77).
+     assert estimate_micro(cheap, input_bound_tokens=1, max_output_tokens=0) == 1
+@@ -168,7 +172,92 @@ def test_priced_model_carries_its_version_and_price() -> None:
+         input_micro_per_token=Decimal("1"),
+         output_micro_per_token=Decimal("2"),
+         cached_input_micro_per_token=Decimal("0.5"),
++        cache_creation_micro_per_token=Decimal("1.25"),
+     )
+     priced = PricedModel(version="2026-06-22", price=price)
+     assert priced.version == "2026-06-22"
+     assert priced.price is price
++
++
++def test_actual_micro_prices_cache_creation_as_a_disjoint_additive_term() -> None:
++    # creation rate (3.125) intentionally EXCEEDS the input rate (2.5): cache
++    # creation is billed at a premium, unlike cache reads.
++    price = ModelPrice(
++        provider="anthropic",
++        model="claude",
++        input_micro_per_token=Decimal("2.5"),
++        output_micro_per_token=Decimal("10"),
++        cached_input_micro_per_token=Decimal("1.25"),
++        cache_creation_micro_per_token=Decimal("3.125"),
++    )
++    # input 1000 (400 of them cache-read), output 200, plus 800 DISJOINT creation tokens.
++    #   non-cached input: (1000-400)*2.5 = 1500
++    #   cache read:       400*1.25       =  500
++    #   output:           200*10         = 2000
++    #   cache creation:   800*3.125      = 2500   (added on top; NOT subtracted from input)
++    #   total                            = 6500
++    assert (
++        actual_micro(
++            price,
++            input_tokens=1000,
++            output_tokens=200,
++            cached_input_tokens=400,
++            cache_creation_tokens=800,
++        )
++        == 6500
++    )
++
++
++def test_cache_creation_defaults_to_zero_and_leaves_existing_cost_unchanged() -> None:
++    price = ModelPrice(
++        provider="anthropic",
++        model="claude",
++        input_micro_per_token=Decimal("2.5"),
++        output_micro_per_token=Decimal("10"),
++        cached_input_micro_per_token=Decimal("1.25"),
++        cache_creation_micro_per_token=Decimal("3.125"),
++    )
++    # same call with no creation tokens == the pre-existing three-class cost.
++    without = actual_micro(price, input_tokens=1000, output_tokens=200)
++    assert (
++        actual_micro(price, input_tokens=1000, output_tokens=200, cache_creation_tokens=0)
++        == without
++    )
++
++
++def test_model_price_allows_cache_creation_rate_above_input_rate() -> None:
++    # must NOT raise: creation legitimately costs more than standard input.
++    price = ModelPrice(
++        provider="anthropic",
++        model="claude",
++        input_micro_per_token=Decimal("2.5"),
++        output_micro_per_token=Decimal("10"),
++        cached_input_micro_per_token=Decimal("1.25"),
++        cache_creation_micro_per_token=Decimal("3.125"),
++    )
++    assert price.cache_creation_micro_per_token == Decimal("3.125")
++
++
++def test_model_price_rejects_negative_cache_creation_rate() -> None:
++    with pytest.raises(ValueError, match="non-negative"):
++        ModelPrice(
++            provider="anthropic",
++            model="claude",
++            input_micro_per_token=Decimal("2.5"),
++            output_micro_per_token=Decimal("10"),
++            cached_input_micro_per_token=Decimal("1.25"),
++            cache_creation_micro_per_token=Decimal("-1"),
++        )
++
++
++def test_actual_micro_rejects_negative_cache_creation_tokens() -> None:
++    price = ModelPrice(
++        provider="anthropic",
++        model="claude",
++        input_micro_per_token=Decimal("2.5"),
++        output_micro_per_token=Decimal("10"),
++        cached_input_micro_per_token=Decimal("1.25"),
++        cache_creation_micro_per_token=Decimal("3.125"),
++    )
++    with pytest.raises(ValueError, match="non-negative"):
++        actual_micro(price, input_tokens=100, output_tokens=0, cache_creation_tokens=-1)
+diff --git a/tests/unit/test_reserve.py b/tests/unit/test_reserve.py
+index f6700e9..0f5e818 100644
+--- a/tests/unit/test_reserve.py
++++ b/tests/unit/test_reserve.py
+@@ -55,6 +55,7 @@ _PRICE = ModelPrice(
+     input_micro_per_token=Decimal("1"),
+     output_micro_per_token=Decimal("2"),
+     cached_input_micro_per_token=Decimal("0.5"),
++    cache_creation_micro_per_token=Decimal("1.25"),
+ )
+ _PRICED = PricedModel(version="2026-06-22", price=_PRICE)
+ # estimate = 1*100 + 2*100 = 300

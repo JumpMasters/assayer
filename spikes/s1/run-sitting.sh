@@ -139,6 +139,16 @@ read -ra PYTEST_CMD <<<"${PYTEST:-uv run pytest}"
 # environment. Those are ERROR, never FAIL, so an unknown code can never manufacture a
 # regression. An unreadable node file is our own fault and is ERROR too; a readable but
 # empty one is legitimately vacuous and passes.
+#
+# COLLECT_ERROR_IS_FAIL=1 narrows that: it scores pytest's collection codes (4 for a
+# single node id, 2 for a directory) as FAIL rather than ERROR. Sound only when the
+# exam supplies its own tests via tests.patch, which the runner has already applied
+# successfully, AND those tests are known to collect and pass against the golden
+# solution under these conditions. Both hold for S3 and the check is recorded there.
+# Then the tests are certainly present, so a collection error is the replay's source
+# failing to provide what they import — the subject failing, not our plumbing.
+# Leave it unset (S1's default) when the node ids come from the repo's own history,
+# where a missing node means a rotted pin and must stay ERROR.
 run_set() {
   set_pass=1; set_error=0
   if [ ! -r "$1" ]; then set_pass=0; set_error=1; return; fi
@@ -153,6 +163,8 @@ run_set() {
     case "$rc" in
       0) ;;
       1) set_pass=0 ;;                      # keep going: a later node may be an ERROR
+      2|4) set_pass=0
+           [ "${COLLECT_ERROR_IS_FAIL:-0}" = "1" ] || { set_error=1; return; } ;;
       *) set_pass=0; set_error=1; return ;;
     esac
   done < "$1"

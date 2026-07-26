@@ -1,0 +1,3 @@
+package assay
+
+func init() { println("side effect at startup") }

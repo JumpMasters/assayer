@@ -1,0 +1,8 @@
+package assay
+
+// A generic channel through the neutral boundary: whatever one harness needs,
+// spelled so that no vendor word appears.
+type Session struct {
+	ID   string
+	Meta map[string]any
+}

@@ -1,0 +1,9 @@
+package app
+
+// A decision hiding in the one file allowed to name vendors.
+func register(id string) string {
+	if id == "some-harness" {
+		return "special"
+	}
+	return "default"
+}

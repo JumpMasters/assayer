@@ -1,0 +1,11 @@
+package app
+
+// What the registration file is allowed to be: names, no decisions.
+var adapters = map[string]adapterPair{
+	"claude-code": {capture: "claudecode/capture", run: "claudecode/run"},
+}
+
+type adapterPair struct {
+	capture string
+	run     string
+}

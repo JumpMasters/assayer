@@ -1,0 +1,14 @@
+package assay
+
+// What a leaf package is allowed to be: types and constants.
+type Kind int
+
+const (
+	KindUser Kind = iota
+	KindAssistant
+)
+
+type Turn struct {
+	Kind Kind
+	Text string
+}

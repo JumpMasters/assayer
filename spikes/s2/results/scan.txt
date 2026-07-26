@@ -1,0 +1,11 @@
+scanned 1681 transcript files
+files with at least one finding: 846 (50.3%)
+    assigned-secret      28849
+    url-credentials      2112
+    jwt                  46
+    private-key          36
+    aws-access-key       27
+    slack-token          26
+    base64:assigned-secret 4
+
+(counts only — no matched value is printed, logged or committed)

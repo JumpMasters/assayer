@@ -10,6 +10,9 @@ method cannot be inspected is an assertion rather than evidence.
 - `s1/` — variance calibration. Answers whether run-to-run variance at the assertion
   level is small enough for drift to be detectable at an affordable number of replays.
   Protocol and pass bar are fixed in advance; see the README's Status section.
+- `s2/` — parser conformance. Answers whether transcript schema churn across harness
+  releases breaks a single capture parser, and whether it can fail closed rather than
+  silently misparse. Protocol and pass bar are fixed in advance in `s2/README.md`.
 - `s3/` — distillation rehearsal. Answers whether one real, messy, multi-turn session
   can be folded into a single headless instruction that replays. S1 measured
   hand-authored exams; this measures a distilled one. Protocol and pass bar are fixed

@@ -307,6 +307,34 @@ required was present in the artefacts a tool would actually hold. The
 disclosures are in
 [`spikes/s3/results/summary.md`](spikes/s3/results/summary.md).
 
+## Reading real transcripts
+
+Both measurements above run through the layer that reads a harness's own
+transcripts, so that layer is upstream of them. Measured 2026-07-26 against
+1,681 local transcript files spanning 18 harness versions; method and figures
+are under [`spikes/s2/`](spikes/s2/).
+
+One parser read **all 1,681 files across all 18 versions**, refusing none. The
+format does churn, but additively: every field the parser needs was present in
+every version, and the changes land in metadata a replay does not read. Tool
+calls and their results paired exactly, with none unmatched across 35,510.
+
+Three assumptions did not survive. `session_id` is not another spelling of
+`sessionId` — it names the session a transcript was resumed from, so treating
+them as the same merges unrelated sessions. Some sessions move between working
+directories partway through, so pinning one workspace per session is not always
+right. And a small share of subagent transcripts cannot be traced back to the
+call that started them, which has to be reported rather than quietly dropped.
+
+**Redaction is not ready, and that is the honest limit here.** Exams are meant to
+be shareable, which means a secret scanner that can be trusted. The one built
+here catches every planted secret, and also flags one local file in two —
+mostly on ordinary code, because a variable named `..._per_token` looks like a
+credential to a pattern matcher. A scanner that noisy either blocks every export
+or teaches you to ignore it. No shareable fixtures were produced for that
+reason, and the criterion it was written against — catching planted secrets —
+turned out to measure the easy half of the problem.
+
 ## Roadmap
 
 Ordered by dependency. No dates: the order is a commitment, the schedule is not.

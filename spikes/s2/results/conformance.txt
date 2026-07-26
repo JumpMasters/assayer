@@ -4,17 +4,20 @@ S2 — parser conformance over 1681 transcript files
   refused       0
 
   extracted:
-      records                209701
-      bookkeeping skipped    113824
+      records                209890
+      bookkeeping skipped    113911
       sidechain records      63277
-      tool results           35482
-      tool uses              35469
+      tool results           35510
+      tool uses              35498
       human turns            23528
 
   files with an invariant violation: 44 of 1681
-      multiple cwds in one transcript: 29 files
-      sessionId/session_id disagree: 15 files
-      parentUuid not resolvable in-file: 2 files
+      multiple cwds in one transcript: 29 files, in 15/18 versions
+          2.1.142, 2.1.149, 2.1.156, 2.1.170, 2.1.177, 2.1.181, 2.1.190, 2.1.191, 2.1.197, 2.1.198, 2.1.199, 2.1.201, 2.1.209, 2.1.217, 2.1.219
+      sessionId/session_id disagree: 15 files, in 4/18 versions
+          2.1.199, 2.1.210, 2.1.211, 2.1.219
+      parentUuid not resolvable in-file: 2 files, in 2/18 versions
+          2.1.199, 2.1.217
 
   versions read: 18
       2.1.142        1 files

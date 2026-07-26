@@ -248,6 +248,7 @@ def main() -> None:
     by_version: collections.Counter = collections.Counter()
     failures: collections.Counter = collections.Counter()
     problem_counts: collections.Counter = collections.Counter()
+    by_problem_version: collections.Counter = collections.Counter()
     problem_files = 0
     totals: collections.Counter = collections.Counter()
 
@@ -276,7 +277,13 @@ def main() -> None:
         if problems:
             problem_files += 1
             for p in problems:
-                problem_counts[p.split(":")[0]] += 1
+                kind = p.split(":")[0]
+                problem_counts[kind] += 1
+                # Clause 2 asks for violations reported with their version, which also
+                # answers whether a violation is release-specific churn or a standing
+                # property of the format.
+                for v in s.versions:
+                    by_problem_version[(kind, v)] += 1
 
     print(f"S2 — parser conformance over {len(files)} transcript files\n")
     print(f"  parsed        {parsed}  ({100 * parsed / len(files):.2f}%)")
@@ -289,8 +296,13 @@ def main() -> None:
         print(f"      {k:22} {v}")
 
     print(f"\n  files with an invariant violation: {problem_files} of {parsed}")
-    for p, n in problem_counts.most_common():
-        print(f"      {p}: {n} files")
+    for kind, n in problem_counts.most_common():
+        vers = sorted(
+            (v for (k, v) in by_problem_version if k == kind),
+            key=lambda x: tuple(int(i) for i in x.split(".")),
+        )
+        print(f"      {kind}: {n} files, in {len(vers)}/{len(by_version)} versions")
+        print(f"          {', '.join(vers)}")
 
     print(f"\n  versions read: {len(by_version)}")
     for v in sorted(by_version, key=lambda x: tuple(int(p) for p in x.split("."))):

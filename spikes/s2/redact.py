@@ -33,7 +33,9 @@ ROOT = pathlib.Path(os.path.expanduser("~/.claude/projects"))
 # transcripts full of code and hashes it produces more noise than signal.
 PATTERNS: list[tuple[str, re.Pattern]] = [
     ("anthropic-key", re.compile(r"sk-ant-(?:api|oat)\w{2}-[\w\-]{20,}")),
-    ("openai-key", re.compile(r"sk-(?:proj-)?[A-Za-z0-9_\-]{32,}")),
+    # \b matters: without it the word "risk-" satisfies `sk-` + 32 word characters, and
+    # every "2026-03-27-risk-disclosure.md" in the corpus scored as an API key.
+    ("openai-key", re.compile(r"\bsk-(?:proj-)?[A-Za-z0-9_\-]{32,}")),
     ("github-token", re.compile(r"gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{50,}")),
     ("aws-access-key", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
     ("google-api-key", re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")),
@@ -41,7 +43,8 @@ PATTERNS: list[tuple[str, re.Pattern]] = [
     ("stripe-key", re.compile(r"\b[rs]k_live_[0-9a-zA-Z]{20,}")),
     ("private-key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----")),
     ("jwt", re.compile(r"\beyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}")),
-    ("url-credentials", re.compile(r"\b[a-z][a-z0-9+.\-]*://[^\s/:@]+:[^\s/@]{3,}@")),
+    ("url-credentials", re.compile(
+        r"\b[a-z][a-z0-9+.\-]*://[^\s/:@$]+:(?![^\s/@]*[$])[^\s/@]{3,}@")),
     # Assignment form: the catch-all for env dumps and config echoes. The value class is
     # any run of non-space, non-quote characters, because real passwords contain
     # punctuation — an earlier, narrower class missed `Tr0ub4dor&3…` by stopping at the
@@ -67,8 +70,19 @@ B64 = re.compile(r"\b[A-Za-z0-9+/]{32,4096}={0,2}")
 # Values that look like secrets but are conventions. Matching these would train a user to
 # waive findings, which is worse than missing one.
 PLACEHOLDERS = re.compile(
-    r"(?i)^(?:x{3,}|\.{3,}|<[^>]+>|\$\{?\w+\}?|your[_\-]?\w+|example|changeme|"
-    r"placeholder|redacted|dummy|test|none|null|true|false|\d+)$")
+    r"(?i)^(?:x{3,}|\.{3,}|<[^>]+>|your[_\-]?\w+|example|changeme|"
+    r"placeholder|redacted|dummy|test|none|null|true|false|\d+"
+    # Shell parameter expansion in any form — `${VAR}`, `${VAR:?msg}`, `$VAR` — is a
+    # reference to a secret, not one. The corpus is full of compose files and scripts
+    # where treating these as findings would bury the real ones.
+    r"|\$\{?[A-Za-z_][A-Za-z0-9_]*(?:[:?!#%\-+][^}]*)?\}?"
+    # A path is not a credential, however secret-shaped its name — but the rule has to be
+    # narrow. An earlier version matched any `word/word`, which swallowed
+    # `wJalrXUtnFEMI/K7MDENG/…`: an AWS secret key contains slashes and looks exactly like
+    # a relative path. So require a leading separator or a trailing file extension.
+    r"|(?:[./~]|\.\.)/[\w./\-]*"
+    r"|[\w.\-]+(?:/[\w.\-]+)+\.[A-Za-z]{1,6}"
+    r")$")
 
 
 def _direct_findings(text: str) -> list[tuple[str, int]]:
@@ -169,6 +183,15 @@ def benign_corpus() -> list[tuple[str, str]]:
         ("hash", "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"),
         ("uuid", "sessionId 5d05e0b9-348b-466b-940c-d0b4c56c2fc2"),
         ("base64 blob", "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8"),
+        # Everything below was a real false positive found by scanning the local store.
+        # They are kept because a benign corpus the author invented alone did not contain
+        # a single one of them, and a detector is only as honest as its hard cases.
+        ("shell default", "DATA_SOURCE_NAME: postgresql://svc:${POSTGRES_PASSWORD:?must be set}@db:5432/app"),
+        ("templated url", "POSTGRES_READ_URL: postgres://svc:${POSTGRES_PASSWORD}@postgres:5432/app"),
+        ("risk in a filename", "docs/superpowers/specs/2026-03-27-risk-disclosure-monitoring.md"),
+        ("task in a tag", "<observation>\n  <type>task-completion-summary</type>\n"),
+        ("htpasswd path", "mount ./broker/nginx/metrics.htpasswd into the container"),
+        ("env var reference", "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"),
     ]
 
 

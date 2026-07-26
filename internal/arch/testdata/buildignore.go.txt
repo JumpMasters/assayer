@@ -1,0 +1,7 @@
+//go:build ignore
+
+package examiner
+
+import "github.com/JumpMasters/assayer/internal/ledger"
+
+var _ = ledger.Entry{}

@@ -1,0 +1,9 @@
+package port
+
+// The database/sql pattern. Every edge here is legal and nothing names a
+// vendor, yet it makes the set of known harnesses mutable at startup.
+type Capture interface{}
+
+var captures = map[string]Capture{}
+
+func Register(id string, c Capture) { captures[id] = c }

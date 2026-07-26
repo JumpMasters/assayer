@@ -1,0 +1,9 @@
+package examiner
+
+import (
+	"github.com/JumpMasters/assayer/internal/assay"
+	"github.com/JumpMasters/assayer/internal/ledger"
+)
+
+var _ = assay.Session{}
+var _ = ledger.Entry{}

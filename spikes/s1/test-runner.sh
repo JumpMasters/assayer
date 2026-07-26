@@ -164,3 +164,36 @@ IFS=, read -r _ _ f2p _ _ _ _ _ _ _ err _ <<<"$(cat "$CSVG")"
 [ "$f2p" = "0" ] && [ "$err" = "0" ] \
   || { echo "FAIL: bogus harness test gamed F2P — f2p=$f2p err=$err"; exit 1; }
 echo "PASS (tests.patch beats a gamed test)"
+
+# --max-budget-usd bounds spend, not wall clock: a harness that hangs without spending
+# never trips it. TIMEOUT_S is the backstop; a short one here keeps the suite fast. The
+# stub harness spawns its own subprocess (mirrors the real CLI) so the timeout path is
+# proven to kill the whole process group, not just the harness's own PID.
+EXAMTO="$TMP/exam-timeout"; cp -R "$EXAM" "$EXAMTO"
+echo "TIMEOUT_S=2" >> "$EXAMTO/pin.env"
+
+CHILD_PID_FILE="$TMP/slow-child.pid"
+cat > "$TMP/slow-harness.sh" <<'EOF'
+#!/usr/bin/env bash
+sleep 20 &
+echo $! > "$CHILD_PID_FILE"
+wait
+EOF
+chmod +x "$TMP/slow-harness.sh"
+
+CSVTO="$TMP/out-timeout.csv"
+CHILD_PID_FILE="$CHILD_PID_FILE" HARNESS="$TMP/slow-harness.sh" \
+  bash "$SPIKE/run-sitting.sh" "$EXAMTO" 7 "$CSVTO"
+echo "row: $(cat "$CSVTO")"
+IFS=, read -r _ _ f2p _ _ _ _ _ _ _ err stop <<<"$(cat "$CSVTO")"
+[ "$f2p" = "0" ] && [ "$err" = "1" ] && [ "$stop" = "timeout" ] \
+  || { echo "FAIL: timeout not distinguishable — f2p=$f2p err=$err stop=$stop"; exit 1; }
+
+# Not an assumption: confirm the harness's own subprocess is actually gone, not just
+# the harness's own PID.
+child_pid=$(cat "$CHILD_PID_FILE" 2>/dev/null || echo "")
+[ -n "$child_pid" ] || { echo "FAIL: stub never recorded its child pid"; exit 1; }
+if kill -0 "$child_pid" 2>/dev/null; then
+  echo "FAIL: timeout left a subprocess (pid $child_pid) running"; exit 1
+fi
+echo "PASS (timeout kills harness and its subprocess, is_error not a failed assertion)"

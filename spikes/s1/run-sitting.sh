@@ -14,6 +14,10 @@ EXAM_DIR=$(cd "$1" && pwd); N=$2; CSV=$3
 SPIKE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=/dev/null
 source "$EXAM_DIR/pin.env"
+# Wall-clock backstop, distinct from --max-budget-usd below: a hung harness that never
+# spends never hits the cost cap. 900s default is generous over the slowest harness call
+# observed so far (172s); an exam's pin.env may override it.
+TIMEOUT_S="${TIMEOUT_S:-900}"
 
 now_ms() { python3 -c 'import time; print(int(time.time()*1000))'; }
 
@@ -39,8 +43,13 @@ mkdir -p "$(dirname "$RAW")"
 # replace it. `--setting-sources project` is what actually excludes user-level hooks,
 # plugins, and memory injection — without it, a memory plugin's growing store would vary
 # between sittings and be recorded as model variance.
+# macOS ships no `timeout`/`gtimeout`, so TIMEOUT_S is enforced by hand: `set -m` gives
+# the backgrounded harness its own process group (its subprocesses inherit that group,
+# since nothing here calls setpgid again), so a deadline miss can be swept away with one
+# negative-PID signal instead of leaving the harness's own children orphaned.
 start=$(now_ms)
 set +e
+set -m
 ( cd "$WT" && env -u ANTHROPIC_API_KEY "${HARNESS:-claude}" -p \
     --output-format json \
     --model claude-opus-4-8 \
@@ -51,7 +60,23 @@ set +e
     --permission-mode acceptEdits \
     --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Bash(uv:*)" "Bash(python3:*)" \
     --max-budget-usd "$CAP_USD" \
-    "$(cat "$EXAM_DIR/instruction.md")" ) > "$RAW" 2>"$RAW.err"
+    "$(cat "$EXAM_DIR/instruction.md")" ) > "$RAW" 2>"$RAW.err" &
+harness_pid=$!
+set +m
+
+timed_out=0
+deadline_ms=$(( $(now_ms) + TIMEOUT_S * 1000 ))
+while kill -0 "$harness_pid" 2>/dev/null; do
+  if [ "$(now_ms)" -ge "$deadline_ms" ]; then
+    timed_out=1
+    kill -TERM -"$harness_pid" 2>/dev/null || true
+    sleep 2
+    kill -KILL -"$harness_pid" 2>/dev/null || true   # still there after TERM: force it
+    break
+  fi
+  sleep 1
+done
+wait "$harness_pid" 2>/dev/null
 harness_rc=$?
 set -e
 wall_ms=$(( $(now_ms) - start ))
@@ -61,9 +86,17 @@ wall_ms=$(( $(now_ms) - start ))
 # -uall: without it an entirely untracked directory collapses to one entry.
 touched=$(git -C "$WT" status --porcelain -uall | wc -l | tr -d ' ')
 
-# Parse the result JSON. A harness that crashed leaves unparseable output: that is ERROR.
-read -r cost turns denials model is_error stop < <(
-  python3 - "$RAW" "$harness_rc" <<'PY'
+# A killed harness leaves partial or empty output, which would otherwise read as the
+# ordinary "unparseable" ERROR below — a timeout is ERROR too, but it must stay a
+# distinguishable stop_reason, not get folded into a different plumbing fault. Never a
+# failed assertion: a timeout means the sitting produced no verdict, same as any other
+# ERROR.
+if [ "$timed_out" = "1" ]; then
+  cost=0; turns=0; denials=0; model=unknown; is_error=1; stop=timeout
+else
+  # Parse the result JSON. A harness that crashed leaves unparseable output: that is ERROR.
+  read -r cost turns denials model is_error stop < <(
+    python3 - "$RAW" "$harness_rc" <<'PY'
 import json, sys
 try:
     d = json.load(open(sys.argv[1]))
@@ -79,7 +112,8 @@ print(d.get("total_cost_usd", 0), d.get("num_turns", 0),
       len(d.get("permission_denials") or []), canon, err,
       (d.get("stop_reason") or "none"))
 PY
-)
+  )
+fi
 
 # A permission stall is ERROR, not FAIL — the sitting produced no verdict.
 if [ "$denials" != "0" ]; then is_error=1; fi

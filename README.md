@@ -52,8 +52,8 @@ That measurement has now been taken, and the numbers are in [Calibration
 numbers](#calibration-numbers) below. Across four exams replayed thirty-five
 times each, deterministic assertions reproduced in 131 of 132 scored replays, at
 a median cost of $0.15 to $0.57 per replay depending on the task. The bar is met
-on every clause as a point estimate. Stated there rather than omitted: only two
-of the four exams have a 95% lower bound at or above 90%, so this establishes a
+on every clause as a point estimate. Stated there rather than omitted: only one
+of the four exams has a 95% lower bound at or above 90%, so this establishes a
 high reproduction rate and not a 90% floor for every exam.
 
 The scaffolding that produced them is committed under `spikes/`. It is not
@@ -225,12 +225,12 @@ fail-to-pass tests plus an 82-file no-regression suite. Method, raw rows, and
 the full reading are under [`spikes/s1/`](spikes/s1/); the table regenerates
 with `python3 spikes/s1/analyze.py`.
 
-| Exam | Replays | Errors | Scored | Reproduced | Rate | 95% interval | Cost per replay |
+| Exam | Replays | Errors | Scored | Reproduced | Rate | 95% lower bound | Cost per replay |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| A — bounded fix, pointed | 35 | 0 | 35 | 35 | 100% | [90%, 100%] | $0.147 |
-| B — feature slice, pointed | 35 | 4 | 31 | 30 | 96.8% | [84%, 99%] | $0.243 |
-| C — design latitude | 35 | 1 | 34 | 34 | 100% | [90%, 100%] | $0.328 |
-| D — discovery, unpointed | 35 | 3 | 32 | 32 | 100% | [89%, 100%] | $0.573 |
+| A — bounded fix, pointed | 35 | 0 | 35 | 35 | 100% | **90.11%** | $0.147 |
+| B — feature slice, pointed | 35 | 4 | 31 | 30 | 96.8% | 83.81% | $0.243 |
+| C — design latitude | 35 | 1 | 34 | 34 | 100% | 89.85% | $0.328 |
+| D — discovery, unpointed | 35 | 3 | 32 | 32 | 100% | 89.28% | $0.573 |
 
 140 replays cost $48.50 in total. Eight ended in a permission stall and are
 recorded as errors, excluded from the counts rather than charged to the model.
@@ -243,24 +243,26 @@ footprint was identical to every passing replay of the same exam, so a
 footprint-based scope check would have missed it.
 
 **What this does not support.** The pre-registered bar in [Status](#status) is
-met on every clause as a point estimate, but only two of the four exams have a
-95% lower bound at or above 90%. D falls a point short at 89%, and B at 84%
-because it recorded that genuine failure. These numbers establish that
-assertions reproduce at a high rate; they do not establish a 90% floor for every
-exam. Three of D's replays were lost to permission stalls, and that alone is why
-it misses — an instrument limitation, not model behaviour.
+met on every clause as a point estimate, but only **one** of the four exams has
+a 95% lower bound at or above 90%. The bounds are given to two decimals because
+C's is 89.85%, which rounds to 90% and is not 90%; rounding a lower bound up is
+the one direction this measurement cannot afford. A point estimate meeting a
+floor is not the same as establishing it. These numbers establish that
+assertions reproduce at a high rate, and only exam A supports the stronger
+claim.
 
-**Cost variance tracks ambiguity, not effort.** Exam C, where many different
-implementations are correct, is the outlier on every dispersion measure: a
-coefficient of variation of 0.38 against 0.07–0.15 for the others, and a
-p90/p10 cost ratio of 2.58 against 1.20–1.35. Exam D is the control — it costs
-four times exam A and takes three times the turns, yet disperses barely more.
-What widens the distribution is how many shapes a correct answer can take, not
-how much work it takes.
+**Cost dispersion appears to track ambiguity more than effort.** Exam C, where
+many different implementations are correct, is the outlier on every measure: a
+coefficient of variation of 0.38 against 0.07–0.15 for the others, and a p90/p10
+cost ratio of 2.58 against 1.20–1.35. Exam D is the control — it costs four
+times exam A and takes three times the turns, and disperses more than A but far
+less than C. Stated as a hypothesis rather than a result: four exams in one
+repository is thin evidence, and C is a single point carrying most of the
+contrast.
 
-Two consequences follow: a baseline-relative cost band cannot use one global
-multiple, and an exam's band cannot be predicted from its cost or difficulty —
-it has to be calibrated from that exam's own series.
+Two consequences follow for the design: a baseline-relative cost band cannot use
+one global multiple, and an exam's band does not appear predictable from its
+cost or difficulty, so it has to be calibrated from that exam's own series.
 
 An earlier version of this section reported ten replays of three exams. That
 sample understated dispersion on every exam and observed no failures at all;

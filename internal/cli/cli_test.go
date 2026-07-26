@@ -24,6 +24,13 @@ func TestRun(t *testing.T) {
 		{name: "help long flag", args: []string{"--help"}, wantCode: 0, wantStdout: "Usage:"},
 		{name: "help short flag", args: []string{"-h"}, wantCode: 0, wantStdout: "Usage:"},
 		{name: "unknown command", args: []string{"wat"}, wantCode: 2, wantStderr: `unknown command "wat"`},
+		{name: "version --json", args: []string{"version", "--json"}, wantCode: 0, wantStdout: `"schema":`},
+		{name: "a typo'd flag is a usage error, not a silent success",
+			args: []string{"version", "--jsonn"}, wantCode: 2, wantStderr: `unexpected argument "--jsonn"`},
+		{name: "trailing junk is rejected",
+			args: []string{"version", "extra", "junk"}, wantCode: 2, wantStderr: "unexpected argument"},
+		{name: "help takes no flags",
+			args: []string{"help", "--format", "json"}, wantCode: 2, wantStderr: "unexpected argument"},
 	}
 
 	for _, tt := range tests {
@@ -50,13 +57,5 @@ func TestRun(t *testing.T) {
 	}
 }
 
-// TestVerdictExitCodesUnused guards a public contract: exit codes 70 to 73 are
-// reserved for verdicts, and no command implemented today produces a verdict.
-func TestVerdictExitCodesUnused(t *testing.T) {
-	for _, args := range [][]string{nil, {"version"}, {"help"}, {"wat"}} {
-		var stdout, stderr bytes.Buffer
-		if got := Run(args, &stdout, &stderr); got >= 70 && got <= 73 {
-			t.Errorf("Run(%q) = %d, which is inside the reserved verdict range", args, got)
-		}
-	}
-}
+// The reserved-range check now lives in exit_test.go, alongside the codes
+// themselves, so that adding a command cannot leave it behind.

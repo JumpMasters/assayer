@@ -1,0 +1,34 @@
+{
+  "$id": "https://github.com/JumpMasters/assayer/schemas/version/v0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "build": {
+      "type": "string"
+    },
+    "emits": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "revision": {
+      "type": "integer"
+    },
+    "schema": {
+      "type": "string"
+    },
+    "stability": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "revision",
+    "stability",
+    "emits",
+    "build"
+  ],
+  "title": "assayer version document",
+  "type": "object"
+}

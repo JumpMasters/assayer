@@ -18,7 +18,7 @@ configuration. It reports what happened, as counts under named conditions.
 ## Status
 
 **There is no examining software here yet.** This repository contains the build,
-test, and security gates, six architecture decision records, the enforcement of
+test, and security gates, seven architecture decision records, the enforcement of
 the package layout described in ADR-0005, and a binary that can print its own
 version. Everything below written in the future tense is unbuilt.
 
@@ -197,6 +197,57 @@ expensive tiers:
 | `ERROR` | Assayer or the harness failed. No verdict; excluded from counts. |
 
 Exclusions are always reported, never silently dropped.
+
+## Machine contracts
+
+Assayer is meant to be driven by other tools, so a few surfaces are contracts
+rather than output. They are *experimental* until the first release: they may
+still change, and every change ships a way to migrate. After that they are
+additive-only.
+
+**Exit codes.** `run` and `ci` are the only commands that will ever return a
+verdict code. Every other command returns 0, 1, or 2, so a script can tell which
+invocations are entitled to make a claim about the thing being measured.
+
+| Code | Meaning |
+|---|---|
+| 0 | Everything held, or a non-verdict command did what was asked |
+| 1 | A failure that is not a verdict: unreadable config, missing exam, corrupt ledger |
+| 2 | A malformed command line |
+| 80 | A regression verdict, which requires an escalated series |
+| 81 | Drift suspected, including an escalation a budget stopped |
+| 82 | No verdict could be reached — a crash, a cap, our own plumbing |
+| 83 | A pin no longer applies, and only under `--strict-stale` |
+
+When several of these hold at once — a suite can carry a regression, a rotted
+pin and an errored exam together — the most severe wins, in the order 82, 80,
+81, 83, 0. Code 82 outranks a regression because it says the other answers could
+not be trusted.
+
+The range sits above the `sysexits.h` block, which ends at 78, and below the
+shell's 126 and 127 and the 128-plus-signal range, so a wrapper composing around
+Assayer does not collide with it. An earlier draft used 70 to 73; those are
+`EX_SOFTWARE`, `EX_OSERR`, `EX_OSFILE` and `EX_CANTCREAT`, and a wrapper dying
+of its own fault at 70 would have been read as a regression that never happened.
+
+**Machine-readable documents.** `assayer version --json` emits one today. Every
+document carries a `schema` identifier, a `revision` that increments whenever an
+emitted shape changes, its stability tier, and the list of schemas the running
+build can produce — so a consumer can find out what it is talking to without
+running anything that costs money. The schemas are committed under
+[`schemas/`](schemas) and generated from the types that produce the documents,
+so the two cannot drift apart.
+
+Output is UTF-8, compact, one object per line, newline-terminated, and does not
+escape HTML characters. Human output goes to stdout; when the event stream
+lands, it will go to stderr so a consumer can read progress while stdout carries
+the result.
+
+The event stream and verdict objects are not built yet. They land before Phase 1
+closes, with the code that produces them — no command returns a verdict exit
+code until there is a machine-readable verdict object to read alongside it,
+because an alarm with no readout leaves scraping human output as the only
+option.
 
 ## Design constraints
 
@@ -409,6 +460,7 @@ internal/port        the interfaces components are wired against
 internal/adapter     capture adapters and the conformance kit they must pass
 internal/buildinfo   version reporting for the running binary
 internal/arch        the architecture test that enforces ADR-0005
+schemas/             committed JSON Schemas for machine-readable output
 docs/adr             architecture decision records
 scripts/coverage.sh  race tests and the coverage gate
 ```
@@ -429,6 +481,7 @@ Significant or hard-to-reverse choices are recorded as
 - [0004 — The conditions the S1 calibration was measured under](docs/adr/0004-s1-calibration-measurement-conditions.md)
 - [0005 — The internal package layout and how it is enforced](docs/adr/0005-internal-package-layout.md)
 - [0006 — The neutral session representation and the capture port](docs/adr/0006-session-representation.md)
+- [0007 — The exit-code contract and the discipline for machine-readable output](docs/adr/0007-exit-codes-and-machine-readable-output.md)
 
 ## Contributing
 

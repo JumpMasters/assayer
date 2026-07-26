@@ -18,6 +18,7 @@ A short index today reflects a young repository, not an undocumented one.
 - [0004 — The conditions the S1 calibration was measured under](0004-s1-calibration-measurement-conditions.md)
 - [0005 — The internal package layout and how it is enforced](0005-internal-package-layout.md)
 - [0006 — The neutral session representation and the capture port](0006-session-representation.md)
+- [0007 — The exit-code contract and the discipline for machine-readable output](0007-exit-codes-and-machine-readable-output.md)
 
 ## Adding a record
 

@@ -26,7 +26,11 @@ type parsedFile struct {
 }
 
 // scanRoots are the directories the guard polices.
-var scanRoots = []string{"internal", "cmd"}
+//
+// schemas/ is included because it holds committed public artifacts. A schema
+// enumerating adapter identifiers would name harnesses in a file consumers are
+// told to trust, and it sits outside internal/ where nothing else would see it.
+var scanRoots = []string{"internal", "cmd", "schemas"}
 
 // repoRoot walks up from the working directory to the directory holding
 // go.mod. `go test` sets the working directory to the package under test, so

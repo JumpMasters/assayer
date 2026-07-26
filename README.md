@@ -17,10 +17,10 @@ configuration. It reports what happened, as counts under named conditions.
 
 ## Status
 
-**There is no working software here yet.** This repository contains the build,
-test, and security gates, three architecture decision records, and a binary that
-can print its own version. Everything below written in the future tense is
-unbuilt.
+**There is no examining software here yet.** This repository contains the build,
+test, and security gates, five architecture decision records, the enforcement of
+the package layout described in ADR-0005, and a binary that can print its own
+version. Everything below written in the future tense is unbuilt.
 
 The design is settled and written down. What is *not* settled is whether the
 design's central assumption survives contact with measurement, and that is the
@@ -402,15 +402,18 @@ additionally runs [CodeQL](.github/workflows/codeql.yml). The toolchain is Go
 ## Project layout
 
 ```
-cmd/assayer          command entrypoint
+cmd/assayer          command entrypoint, one line
+internal/cli         command dispatch, output, and exit codes
 internal/buildinfo   version reporting for the running binary
+internal/arch        the architecture test that enforces ADR-0005
 docs/adr             architecture decision records
 scripts/coverage.sh  race tests and the coverage gate
 ```
 
-Small, and honestly so. The package layout for the core arrives with the first
-implementation phase and will be recorded as an ADR at that point rather than
-guessed at now.
+Small, and honestly so. The shape the rest of it will take is recorded in
+[ADR-0005](docs/adr/0005-internal-package-layout.md), which also describes how
+that shape is enforced: a package that appears without classifying itself does
+not build, and no package outside an adapter may name a harness.
 
 ## Design decisions
 
@@ -420,6 +423,8 @@ Significant or hard-to-reverse choices are recorded as
 - [0001 — Record architecture decisions](docs/adr/0001-record-architecture-decisions.md)
 - [0002 — Name and module path](docs/adr/0002-name-and-module-path.md)
 - [0003 — Go, a single static binary, driving harness CLIs](docs/adr/0003-go-single-binary-driving-harness-clis.md)
+- [0004 — The conditions the S1 calibration was measured under](docs/adr/0004-s1-calibration-measurement-conditions.md)
+- [0005 — The internal package layout and how it is enforced](docs/adr/0005-internal-package-layout.md)
 
 ## Contributing
 

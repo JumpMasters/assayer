@@ -118,6 +118,23 @@ nothing to do with the model.
 The allowlist was deliberately not widened mid-run: changing conditions partway
 would have split the dataset silently.
 
+**Fixed after the measurement, not during it.** All nine denied commands contained
+`&&`, `;`, `|` or a newline. The harness splits compound commands and requires
+every part to match, so `uv run mypy ... && uv run python -c ...` was denied
+though both halves were `uv`. Naming more binaries does not converge on a fix;
+the replays reached for `sed`, `rg`, `tr`, `echo`, `rm`, `mypy` and `cd` as they
+went. `Bash` is now allowed unrestricted, which makes a Bash denial structurally
+impossible rather than merely less likely. Eight validation replays of exam B —
+the exam that ran an 11% error rate — produced no denials and all passed, at a
+slightly higher median cost of $0.257, since a replay can now run the checks it
+was reaching for.
+
+Those eight replays are **not** in the figures above, and the figures were not
+recomputed. They were taken under a different tool allowlist and so belong to a
+different experiment; folding them in would mix two conditions in one table. The
+numbers published here describe the instrument as it stood during the
+measurement, 5.7% error rate included.
+
 ## What ten replays got wrong
 
 The first reading used ten replays of exams A, B and C. It was wrong in two ways

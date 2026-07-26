@@ -47,6 +47,18 @@ mkdir -p "$(dirname "$RAW")"
 # the backgrounded harness its own process group (its subprocesses inherit that group,
 # since nothing here calls setpgid again), so a deadline miss can be swept away with one
 # negative-PID signal instead of leaving the harness's own children orphaned.
+# Bash is allowed unrestricted rather than by per-binary prefix. A prefix list does
+# not survive compound commands: the harness splits on &&, ;, | and newlines and
+# requires every part to match, so `uv run mypy ... && uv run python -c ...` was
+# denied even though both halves are uv. All 9 denials in the first 140-replay run
+# were of that shape, and each cost a replay — a stall is recorded as an error, and
+# errors shrink the sample a confidence bound is made of. Chasing binaries (sed, rg,
+# tr, echo, rm, mypy, cd) does not converge.
+#
+# The trade is real: this is weaker than the least-privilege, golden-derived
+# allowlist the design describes for tier 1. What still holds is that the replay runs
+# in a disposable worktree under a temp directory, and that allowedTools is a
+# whitelist — no network tool is on it, so WebFetch and WebSearch stay unavailable.
 start=$(now_ms)
 set +e
 set -m
@@ -58,7 +70,7 @@ set -m
     --disable-slash-commands \
     --strict-mcp-config \
     --permission-mode acceptEdits \
-    --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Bash(uv:*)" "Bash(python3:*)" \
+    --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Bash" \
     --max-budget-usd "$CAP_USD" \
     "$(cat "$EXAM_DIR/instruction.md")" ) > "$RAW" 2>"$RAW.err" &
 harness_pid=$!

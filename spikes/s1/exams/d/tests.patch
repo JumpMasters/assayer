@@ -1,0 +1,105 @@
+diff --git a/tests/unit/test_domain_error_contract.py b/tests/unit/test_domain_error_contract.py
+new file mode 100644
+index 0000000..b7dc0d2
+--- /dev/null
++++ b/tests/unit/test_domain_error_contract.py
+@@ -0,0 +1,99 @@
++"""The domain layer's typed-error contract, asserted across every module that validates input.
++
++errors.py states that callers match on the type, never on a string. These tests hold the
++whole domain layer to that, not one module of it.
++
++Every import of the code under test is deferred into the test body. With the contract
++unmet that yields a clean assertion failure rather than a collection error; a collection
++error would be recorded as an instrument error and drop out of the pass-rate denominator,
++which would silently inflate the measured pass rate.
++
++Each assertion targets the TollgateError base class rather than any named subclass, so any
++correct implementation passes whatever error classes it chose to define.
++"""
++
++from __future__ import annotations
++
++from datetime import UTC, datetime
++from decimal import Decimal
++
++import pytest
++
++
++def _price():
++    from tollgate.domain.pricing import ModelPrice
++
++    return ModelPrice(
++        provider="p",
++        model="m",
++        input_micro_per_token=Decimal("2"),
++        output_micro_per_token=Decimal("3"),
++        cached_input_micro_per_token=Decimal("1"),
++        cache_creation_micro_per_token=Decimal("4"),
++    )
++
++
++def test_money_rejects_a_negative_amount_with_a_typed_error() -> None:
++    from tollgate.domain.errors import TollgateError
++    from tollgate.domain.money import ceil_micro, round_micro
++
++    with pytest.raises(TollgateError):
++        round_micro(Decimal("-1"))
++    with pytest.raises(TollgateError):
++        ceil_micro(Decimal("-1"))
++
++
++def test_periods_rejects_a_naive_datetime_with_a_typed_error() -> None:
++    from tollgate.domain.errors import TollgateError
++    from tollgate.domain.periods import calendar_month_start
++
++    with pytest.raises(TollgateError):
++        calendar_month_start(datetime(2026, 1, 1))  # noqa: DTZ001
++
++
++def test_pricing_rejects_bad_rates_and_counts_with_typed_errors() -> None:
++    from tollgate.domain.errors import TollgateError
++    from tollgate.domain.pricing import ModelPrice, actual_micro, estimate_micro, reconcile
++
++    ok = _price()
++
++    with pytest.raises(TollgateError):
++        ModelPrice(
++            provider="p",
++            model="m",
++            input_micro_per_token=Decimal("-1"),
++            output_micro_per_token=Decimal("3"),
++            cached_input_micro_per_token=Decimal("1"),
++            cache_creation_micro_per_token=Decimal("4"),
++        )
++    with pytest.raises(TollgateError):
++        ModelPrice(
++            provider="p",
++            model="m",
++            input_micro_per_token=Decimal("2"),
++            output_micro_per_token=Decimal("3"),
++            cached_input_micro_per_token=Decimal("99"),
++            cache_creation_micro_per_token=Decimal("4"),
++        )
++    with pytest.raises(TollgateError):
++        estimate_micro(ok, input_bound_tokens=-1, max_output_tokens=0)
++    with pytest.raises(TollgateError):
++        actual_micro(ok, input_tokens=-1, output_tokens=0)
++    with pytest.raises(TollgateError):
++        actual_micro(ok, input_tokens=1, output_tokens=0, cached_input_tokens=5)
++    with pytest.raises(TollgateError):
++        reconcile(reserved_micro=-1, actual=0)
++
++
++def test_existing_value_error_callers_keep_working() -> None:
++    # The contract is additive: callers catching ValueError today must not break.
++    from tollgate.domain.money import round_micro
++    from tollgate.domain.periods import calendar_month_start
++    from tollgate.domain.pricing import reconcile
++
++    with pytest.raises(ValueError):
++        round_micro(Decimal("-1"))
++    with pytest.raises(ValueError):
++        calendar_month_start(datetime(2026, 1, 1))  # noqa: DTZ001
++    with pytest.raises(ValueError):
++        reconcile(reserved_micro=-1, actual=0)

@@ -164,6 +164,39 @@ golden commit under the exam's own conditions:
 | Base commit, 8 fail-to-pass node ids | all fail — the exam is not vacuous |
 | Base commit, an untouched unit file | passes — the failure is the pin, not the environment |
 
+## The control arm, added after the main arm had run
+
+**This was not pre-registered.** It was added after the main arm returned ten
+passes from ten replays, and the ordering is recorded because it matters: a
+result this clean is a reason to look for the way it could be spurious, and
+there was one.
+
+The main arm pins a git worktree of the real tollgate repository. A worktree
+shares the object database, the golden commit `d84d3ad` is a descendant of the
+base commit on `main`, and `Bash` is unrestricted. From inside a replay,
+`git show d84d3ad` returns the complete solution — verified, not assumed. Ten
+passes are consistent with the instruction carrying the work; they are equally
+consistent with a replay reading the commit the exam was distilled from.
+
+The control arm removes that reachability and changes nothing else. The tree at
+the base commit is exported with `git archive` and re-committed as the single
+commit of a fresh repository: no `main`, no branches, no remotes, no descendant
+to read. `run-control.sh` aborts if the original history is still reachable, so
+the arm cannot quietly measure nothing. Same instruction, same tests, same
+assertions, same conditions, same runner, same N.
+
+Adding it can only make the claim harder to sustain, never easier, which is why
+adding it late is defensible where moving a floor late would not be. The bar's
+three clauses are unchanged; what changes is which arm they are read against.
+**The main arm is reported, but the control arm is the one the conclusion rests
+on.** If the two disagree, the control arm is the result and the main arm is
+evidence of contamination.
+
+This is not only a spike artefact, and that is the more useful half. A user's
+exam pins a commit in a repository whose history contains the very session it
+was blessed from, so the same reachability exists in the product as designed.
+That consequence is carried into `results/summary.md`.
+
 ## If it fails
 
 A failure is a result, not a setback, and it lands before Phase 1 rather than

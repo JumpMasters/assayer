@@ -23,7 +23,7 @@ linters:
     - whitespace     # leading/trailing whitespace
   settings:
     depguard:
-      # depguard:begin — generated from internal/arch/classify_test.go. Do not edit by hand:
+              # depguard:begin — generated from internal/arch/classify_test.go. Do not edit by hand:
       # change the classification, run `go test ./internal/arch/`, and paste what it prints.
       rules:
         cmd-assayer:
@@ -33,12 +33,25 @@ linters:
           deny:
             - pkg: github.com/JumpMasters/assayer
               desc: "cmd/assayer is class cmd: within this module it may import only internal/cli (ADR-0005)"
+        adapter-conformance:
+          list-mode: lax
+          files: ["**/internal/adapter/conformance/*.go", "!$test"]
+          allow: [github.com/JumpMasters/assayer/internal/assay, github.com/JumpMasters/assayer/internal/port]
+          deny:
+            - pkg: github.com/JumpMasters/assayer
+              desc: "internal/adapter/conformance is class adapter: within this module it may import only internal/assay, internal/port (ADR-0005)"
         arch:
           list-mode: lax
           files: ["**/internal/arch/*.go"]
           deny:
             - pkg: github.com/JumpMasters/assayer
               desc: "internal/arch is class standalone: it may import no other package in this module (ADR-0005)"
+        assay:
+          list-mode: lax
+          files: ["**/internal/assay/*.go"]
+          deny:
+            - pkg: github.com/JumpMasters/assayer
+              desc: "internal/assay is class leaf: it may import no other package in this module (ADR-0005)"
         buildinfo:
           list-mode: lax
           files: ["**/internal/buildinfo/*.go"]
@@ -52,6 +65,13 @@ linters:
           deny:
             - pkg: github.com/JumpMasters/assayer
               desc: "internal/cli is class root(cli): within this module it may import only internal/app, internal/assay, internal/buildinfo (ADR-0005)"
+        port:
+          list-mode: lax
+          files: ["**/internal/port/*.go"]
+          allow: [github.com/JumpMasters/assayer/internal/assay]
+          deny:
+            - pkg: github.com/JumpMasters/assayer
+              desc: "internal/port is class ports: within this module it may import only internal/assay (ADR-0005)"
       # depguard:end
     gocritic:
       enabled-tags:

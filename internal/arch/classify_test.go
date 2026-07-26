@@ -62,8 +62,12 @@ func (c class) String() string {
 var classification = map[string]class{
 	"internal/buildinfo": classStandalone,
 	"internal/arch":      classStandalone,
+	"internal/assay":     classLeaf,
+	"internal/port":      classPorts,
 	"internal/cli":       classRootCLI,
 	"cmd/assayer":        classCmd,
+
+	"internal/adapter/conformance": classAdapter,
 }
 
 // allowedInternal returns the in-module packages a class may import.
@@ -80,7 +84,11 @@ func allowedInternal(c class, isTest bool) []string {
 	case classComponent:
 		return []string{"internal/assay", "internal/port"}
 	case classAdapter:
-		allowed := []string{"internal/adapter/shared", "internal/assay", "internal/port"}
+		// internal/adapter/shared is described in ADR-0005 as the home for code
+		// common to several adapters. It is not listed here because it does not
+		// exist: an allowance for a package nobody has written cannot be checked
+		// against anything, and is added in the change that creates it.
+		allowed := []string{"internal/assay", "internal/port"}
 		if isTest {
 			allowed = append(allowed, "internal/adapter/conformance")
 		}

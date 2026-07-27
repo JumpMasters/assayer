@@ -86,20 +86,33 @@ func (Adapter) Capabilities() assay.CapabilitySet {
 // shortened in place, so a result body may be a prefix of what the tool
 // actually returned.
 //
+// The workspace is partial because the capability governs six fields and this
+// adapter fills two. A transcript records the working directory and the branch;
+// it never records the revision, the origin, or a toolchain fingerprint.
+// Declared whole, an assertion that a replay ran on the same revision would
+// compare a recorded SHA against an empty string and return a failure where the
+// honest answer is an error. Reading the three from the repository at load time
+// is possible and is not the same measurement: it would report today's state,
+// not the session's.
+//
 // Delegation is partial for a reason worth stating plainly, because it was
 // nearly an overclaim. Delegated work is recorded two ways: inline in the
 // session's own transcript, which this adapter reads, and offloaded into
 // separate files beside it, which it does not. Scanning 601 project-root
 // transcripts found no inline delegation at all — every one of them keeps it in
 // the files this adapter skips. So the capability is declared, because the
-// inline form is read correctly when it appears, and marked partial, because on
-// the store as it exists today the answer is always empty. An assertion about
+// inline form is read, and marked partial, because on the store as it exists
+// today the answer is always empty, and because what is read is carried as one
+// delegation with no identifier: nothing in a transcript separates two
+// sub-agent runs or links either to the call that spawned it, so
+// Delegation.ID and ToolCall.DelegatedID stay empty. An assertion about
 // delegated work that would fail on this evidence resolves to an error instead,
 // which is the right answer: nothing was seen because nothing was looked at.
 func partialCapabilities() assay.CapabilitySet {
 	return assay.CapabilitySet(0).With(
 		assay.CanSeeModelIdentity,
 		assay.CanSeeToolResults,
+		assay.CanSeeWorkspace,
 		assay.CanSeeDelegation,
 	)
 }
@@ -167,7 +180,10 @@ func (a Adapter) Discover(ctx context.Context, q port.Query) ([]port.Ref, error)
 			if !q.Since.IsZero() && ref.At.Before(q.Since) {
 				continue
 			}
-			if q.Dir != "" && !strings.Contains(project.Name(), encodeProjectDir(q.Dir)) {
+			// Equality, not a substring test: Dir names a directory, and
+			// containment made a query for /work match a project named for
+			// /workspace/other.
+			if q.Dir != "" && project.Name() != encodeProjectDir(q.Dir) {
 				continue
 			}
 			refs = append(refs, ref)
@@ -183,8 +199,21 @@ func (a Adapter) Discover(ctx context.Context, q port.Query) ([]port.Ref, error)
 
 // encodeProjectDir renders a filesystem path the way the store names the
 // directory it keeps that project's transcripts in.
+//
+// Every character outside [A-Za-z0-9-] is replaced, not just the separator.
+// Recovering 300 project directory names from the working directory their
+// transcripts record, all 300 need the wider rule and 234 are missed by
+// replacing slashes alone — so a query naming a path holding a dot or an
+// underscore used to return nothing, which is indistinguishable from a
+// directory that genuinely holds no sessions.
 func encodeProjectDir(dir string) string {
-	return strings.ReplaceAll(strings.TrimSuffix(dir, "/"), "/", "-")
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-':
+			return r
+		}
+		return '-'
+	}, strings.TrimSuffix(dir, "/"))
 }
 
 // Load implements port.Capture.

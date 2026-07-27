@@ -22,11 +22,18 @@ import (
 // The key is the declaring type's name and the field name, not a full path, so
 // that a type reached from several places is described once.
 //
-// This table is what makes a capability declaration binding rather than
-// advisory. Without it, "an adapter must not report what it cannot see" is a
-// sentence in a document; with it, the check below can be written, and a field
-// added later without a decision about its observability fails rather than
-// going quietly unchecked.
+// This table binds one direction of a capability declaration. Without it, "an
+// adapter must not report what it cannot see" is a sentence in a document; with
+// it, the check below can be written, and a field added later without a decision
+// about its observability fails rather than going quietly unchecked.
+//
+// The other direction is still advisory. A capability declared whole and never
+// filled leaves its fields at zero, and zero passes: the check cannot tell an
+// adapter that saw nothing this session from one that never reads the field at
+// all. Catching that needs a fixture per capability known to carry the evidence
+// for it, which does not exist yet. Until it does, an over-declared capability
+// is caught by review — which is how the four in the first adapter were found —
+// and not by this kit.
 func governed(key string) (assay.Capability, bool) {
 	switch key {
 	case "Lineage.ID", "Lineage.Parent":

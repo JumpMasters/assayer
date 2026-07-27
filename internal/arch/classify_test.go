@@ -67,7 +67,8 @@ var classification = map[string]class{
 	"internal/cli":       classRootCLI,
 	"cmd/assayer":        classCmd,
 
-	"internal/adapter/conformance": classAdapter,
+	"internal/adapter/conformance":        classAdapter,
+	"internal/adapter/claudecode/capture": classAdapter,
 }
 
 // allowedInternal returns the in-module packages a class may import.

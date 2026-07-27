@@ -178,13 +178,18 @@ type ToolResult struct {
 
 	Outcome Outcome
 
-	// ExitCode is meaningful when Outcome is OutcomeOK or OutcomeNonZero.
+	// ExitCode is nil when no code was observed, which is the ordinary case
+	// rather than the exception.
 	//
-	// The distinction it preserves is load-bearing rather than decorative: test
-	// runners use separate non-zero codes for "tests failed" and "the thing you
-	// named does not exist", and the second is a pin that has rotted rather than
-	// a regression.
-	ExitCode int
+	// A pointer because zero is a meaningful exit code and would otherwise be
+	// indistinguishable from absence. The reference harness records whether a
+	// call errored and never records the code itself, so an adapter that filled
+	// this with 0 would be reporting success beside an Outcome saying the call
+	// failed. The distinction the field preserves when it IS observed is
+	// load-bearing: test runners use separate non-zero codes for "tests failed"
+	// and "the thing you named does not exist", and the second is a pin that has
+	// rotted rather than a regression.
+	ExitCode *int
 }
 
 // Workspace is the state of the files a session worked on.

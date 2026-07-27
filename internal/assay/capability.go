@@ -31,7 +31,7 @@ const (
 	CanSeeToolCalls
 	CanSeeToolInputs
 	CanSeeToolResults
-	CanSeeExitStatus
+	CanSeeToolOutcome
 	CanSeeFileMutations
 	CanSeeMutationContent
 	CanSeeTurnText
@@ -69,8 +69,8 @@ func (c Capability) String() string {
 		return "tool-inputs"
 	case CanSeeToolResults:
 		return "tool-results"
-	case CanSeeExitStatus:
-		return "exit-status"
+	case CanSeeToolOutcome:
+		return "tool-outcome"
 	case CanSeeFileMutations:
 		return "file-mutations"
 	case CanSeeMutationContent:

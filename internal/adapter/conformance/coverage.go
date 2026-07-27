@@ -63,7 +63,7 @@ func governed(key string) (assay.Capability, bool) {
 	case "ToolResult.Text", "ToolResult.Truncated":
 		return assay.CanSeeToolResults, true
 	case "ToolResult.Outcome", "ToolResult.ExitCode":
-		return assay.CanSeeExitStatus, true
+		return assay.CanSeeToolOutcome, true
 
 	case "Usage.CostMicroUSD":
 		return assay.CanSeeCost, true

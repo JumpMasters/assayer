@@ -703,3 +703,31 @@ func TestSitClassifiesTheOtherEndingsTheSchemaPermits(t *testing.T) {
 		})
 	}
 }
+
+// TestAnAdapterWithNoBinaryNamedLooksOnThePath covers the branch every caller
+// will actually take. A composition root constructs this adapter with no Bin,
+// and until now the only untested statement in it was the line deciding what to
+// run — so a typo in the harness's name would have shipped.
+//
+// The stub goes on PATH rather than being named directly, which is the whole
+// point: the lookup is the thing under test.
+func TestAnAdapterWithNoBinaryNamedLooksOnThePath(t *testing.T) {
+	abs, err := filepath.Abs(filepath.Join("testdata", completed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin := stub(t, "cat '"+abs+"'")
+	// stub names the file "claude" already; put its directory first on the path.
+	// Prepended rather than substituted: the stub is a shell script that runs
+	// cat, and the adapter hands its own PATH through to the harness, so
+	// replacing it outright leaves the stub unable to find its own tools.
+	t.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	s, err := run.Adapter{}.Sit(context.Background(), work(t))
+	if err != nil {
+		t.Fatalf("Sit with no binary named: %v", err)
+	}
+	if s.Stop != assay.StopComplete {
+		t.Errorf("Stop = %v, want complete", s.Stop)
+	}
+}

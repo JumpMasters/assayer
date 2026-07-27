@@ -218,6 +218,67 @@ func TestDelegatedWorkIsCarriedAndOrderIsNotClaimed(t *testing.T) {
 	}
 }
 
+// TestInjectedRecordsAreNotAttributedToAPerson guards the distinction between
+// what a person asked for and what the harness wrote into the conversation on
+// its own — hook output, command results, caveat banners, a compaction summary.
+// All of it arrives under the user's role. Counted as human turns it was 48.3%
+// of them on the store this adapter was measured against, and a distiller
+// reading the session to work out what was asked would find a third of the
+// asking was the harness talking to itself.
+func TestInjectedRecordsAreNotAttributedToAPerson(t *testing.T) {
+	s := loadOnly(t, `
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"user","content":"add a test"}}
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","isMeta":true,"timestamp":"2026-01-01T00:00:01Z","message":{"role":"user","content":"Caveat: the messages below were generated while running a local command."}}
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","isCompactSummary":true,"timestamp":"2026-01-01T00:00:02Z","message":{"role":"user","content":"This session is being continued from a previous conversation."}}
+`)
+	if len(s.Turns) != 3 {
+		t.Fatalf("got %d turns, want 3; injected text is kept as evidence, only its author is not claimed", len(s.Turns))
+	}
+	if s.Turns[0].Role != assay.RoleHuman {
+		t.Errorf("a genuine turn lost its role: got %v", s.Turns[0].Role)
+	}
+	for _, turn := range s.Turns[1:] {
+		if turn.Role == assay.RoleHuman {
+			t.Errorf("the harness's own text was attributed to a person: %q", turn.Text)
+		}
+	}
+}
+
+// TestCompactedSessionDoesNotClaimACompleteOrder covers the second clause of
+// OrderComplete, which went unimplemented: a session whose earlier part was
+// compacted away no longer knows the order of everything it did. Claiming
+// otherwise turns missing evidence into a failure — the manufactured regression
+// the flag exists to prevent.
+func TestCompactedSessionDoesNotClaimACompleteOrder(t *testing.T) {
+	t.Run("the summary that replaces a compacted prefix", func(t *testing.T) {
+		s := loadOnly(t, `
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","isCompactSummary":true,"timestamp":"2026-01-01T00:00:00Z","message":{"role":"user","content":"This session is being continued from a previous conversation."}}
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:01Z","message":{"role":"user","content":"carry on"}}
+`)
+		if s.OrderComplete {
+			t.Error("order was claimed complete on a session that had been compacted")
+		}
+	})
+
+	// The boundary marker carries no message and so becomes no turn. Reading the
+	// flag off the turns alone would miss it.
+	t.Run("the boundary marker on its own", func(t *testing.T) {
+		s := loadOnly(t, `
+{"type":"system","version":"2.1.220","sessionId":"s","cwd":"/w","subtype":"compact_boundary","timestamp":"2026-01-01T00:00:00Z","content":"Conversation compacted"}
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:01Z","message":{"role":"user","content":"carry on"}}
+`)
+		if s.OrderComplete {
+			t.Error("order was claimed complete across a compaction boundary")
+		}
+	})
+
+	t.Run("an uncompacted session still claims it", func(t *testing.T) {
+		if s := loadOnly(t, transcriptWithATool); !s.OrderComplete {
+			t.Error("order was withheld from a session that was never compacted")
+		}
+	})
+}
+
 // TestUnknownReleaseIsReadButNotVerified covers the choice not to refuse a
 // release nobody has checked. Refusing would break capture roughly twice a week
 // at the rate releases were measured arriving.

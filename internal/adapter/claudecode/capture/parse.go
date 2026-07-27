@@ -30,6 +30,18 @@ type record struct {
 	IsSidechain bool    `json:"isSidechain"`
 	Message     message `json:"message"`
 
+	// IsMeta and IsCompactSummary mark text the harness wrote into the
+	// conversation itself: hook output, command results, caveat banners, and the
+	// summary that replaces a prefix dropped to save context. All of it arrives
+	// under the user's role and none of it was typed by a person.
+	IsMeta           bool `json:"isMeta"`
+	IsCompactSummary bool `json:"isCompactSummary"`
+
+	// Subtype distinguishes kinds of system record. The boundary a compaction
+	// leaves behind is the one that matters here, and it carries no message, so
+	// it is visible only on the record.
+	Subtype string `json:"subtype"`
+
 	// ParentSessionID appears on the record that marks a fork. The field that
 	// names a parent lives on its own record type rather than on every line.
 	ParentSessionID string `json:"parentSessionId"`
@@ -103,6 +115,7 @@ func parse(ctx context.Context, r io.Reader) (assay.Session, error) {
 		seenDir   = map[string]bool{}
 		pending   = map[string]*pendingCall{}
 		delegated []assay.Turn
+		compacted bool
 	)
 
 	for sc.Scan() {
@@ -154,6 +167,12 @@ func parse(ctx context.Context, r io.Reader) (assay.Session, error) {
 		if rec.GitBranch != "" && s.Workspace.Branch == "" {
 			s.Workspace.Branch = rec.GitBranch
 		}
+		// Both markers are read. They arrive together in the ordinary case, and
+		// the summary can be resumed into a session that never saw the boundary
+		// that produced it.
+		if rec.IsCompactSummary || rec.Subtype == "compact_boundary" {
+			compacted = true
+		}
 
 		turn, results := recordToTurn(&rec)
 
@@ -198,10 +217,12 @@ func parse(ctx context.Context, r io.Reader) (assay.Session, error) {
 		// call that spawned it, so the order of the whole session is not fully
 		// known and assertions about ordering must say so rather than guess.
 		s.Delegated = []assay.Delegation{{Turns: delegated}}
-		s.OrderComplete = false
-	} else {
-		s.OrderComplete = true
 	}
+	// The other way the order goes unknown: compaction drops a prefix of the
+	// session, and what it dropped is gone from the transcript rather than
+	// marked in it. Either condition makes an ordering assertion a question the
+	// evidence cannot answer.
+	s.OrderComplete = len(delegated) == 0 && !compacted
 
 	if len(s.Turns) > 0 {
 		s.Usage.Wall = s.Turns[len(s.Turns)-1].At.Sub(s.Turns[0].At)
@@ -219,11 +240,16 @@ type pendingCall struct{ call *assay.ToolCall }
 func recordToTurn(rec *record) (turn *assay.Turn, results map[string]*assay.ToolResult) {
 	results = map[string]*assay.ToolResult{}
 
+	// The harness's own text is kept, because the agent read it and a rubric
+	// grading what the agent was working from needs it, and its author is left
+	// unclaimed, because no person wrote it. Attributing it to one inflated the
+	// human turns of the measured store by 48.3%.
 	role := assay.RoleUnknown
-	switch rec.Message.Role {
-	case "user":
+	switch {
+	case rec.IsMeta || rec.IsCompactSummary:
+	case rec.Message.Role == "user":
 		role = assay.RoleHuman
-	case "assistant":
+	case rec.Message.Role == "assistant":
 		role = assay.RoleAgent
 	}
 

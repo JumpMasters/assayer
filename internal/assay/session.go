@@ -246,9 +246,21 @@ type Usage struct {
 	// either.
 	CostMicroUSD int64
 
+	// InputTokens counts every input token the harness billed against, cached
+	// or not. Harnesses report the split — freshly written cache, cache read,
+	// neither — and summing it here rather than carrying three fields keeps one
+	// number comparable across adapters that record the split differently. A
+	// consumer that needs the split is a reason to add fields, and there is not
+	// one yet; on the measured store cached input is 99.97% of the total, so an
+	// adapter reading only the uncached field would look three orders of
+	// magnitude cheaper than one that reads all of it.
 	InputTokens  int64
 	OutputTokens int64
-	Wall         time.Duration
+
+	// Wall is the span between the first and last observed timestamps. It is
+	// neither the session's duration nor the time the agent worked: a transcript
+	// records when records were written, and sessions sit idle between them.
+	Wall time.Duration
 }
 
 // Delegation is work a session handed to a sub-agent.
@@ -278,6 +290,14 @@ type Fidelity struct {
 	// heartbeat check compares the current version to it, and isolating a
 	// regression across harness releases needs it as a dimension. Reducing it to
 	// the Verified flag below would discard all three.
+	//
+	// One release, and a session can span a bump: harnesses update while a
+	// session is open, and one transcript in a local store of 730 spanned six
+	// releases. It names the release the session's last record was written by,
+	// which is what the heartbeat above is comparing today's version against.
+	// Adapters must not join several into one value — the equality test that
+	// field exists for would then never match on exactly the sessions that had
+	// already seen a bump.
 	Version string
 
 	Tier Tier

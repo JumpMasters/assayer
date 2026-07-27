@@ -3,6 +3,7 @@ package capture
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,8 +33,13 @@ const transcriptWithATool = `
 
 func writeStore(t *testing.T, name, body string) string {
 	t.Helper()
+	return writeStoreIn(t, "-work-project", name, body)
+}
+
+func writeStoreIn(t *testing.T, project, name, body string) string {
+	t.Helper()
 	root := t.TempDir()
-	dir := filepath.Join(root, "-work-project")
+	dir := filepath.Join(root, project)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
@@ -402,5 +408,253 @@ func TestCapabilitiesAreNotOverclaimed(t *testing.T) {
 	}
 	if !caps.Contains(partial) {
 		t.Error("a capability is marked partial that the adapter does not claim at all")
+	}
+	if !partial.Has(assay.CanSeeWorkspace) {
+		t.Error("the workspace is not marked partial; the revision and the origin are " +
+			"governed by it and are never filled, so an assertion comparing a replay's " +
+			"revision would compare a recorded SHA against an empty string and fail")
+	}
+}
+
+// TestProviderIsNotInvented covers a field that was filled with a constant no
+// record states. The harness routes to two other backends under environment
+// variables and writes the same transcript either way; the backend changing is
+// one of the conditions an exam is re-administered for, and a hard-coded value
+// asserts it never did.
+func TestProviderIsNotInvented(t *testing.T) {
+	s := loadOnly(t, `
+{"type":"assistant","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"assistant","model":"anthropic.claude-x-1-v1:0","content":[{"type":"text","text":"hello"}]}}
+`)
+	if got := s.Turns[0].Model.Provider; got != "" {
+		t.Errorf("provider = %q, want empty; no transcript record names one", got)
+	}
+	if s.Turns[0].Model.Canonical != "anthropic.claude-x-1-v1:0" {
+		t.Errorf("canonical = %q", s.Turns[0].Model.Canonical)
+	}
+}
+
+// TestTokensCountEveryInputTheHarnessBilledFor covers the two cache fields that
+// went unread. On the measured store they carry 12.4 billion tokens against 3.9
+// million for the field that was read, so the figure an assertion ran against
+// was three orders of magnitude too small.
+func TestTokensCountEveryInputTheHarnessBilledFor(t *testing.T) {
+	s := loadOnly(t, `
+{"type":"assistant","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"assistant","model":"m","usage":{"input_tokens":7,"cache_creation_input_tokens":300,"cache_read_input_tokens":5000,"output_tokens":11},"content":[{"type":"text","text":"hi"}]}}
+`)
+	if s.Usage.InputTokens != 5307 {
+		t.Errorf("input tokens = %d, want 5307: every input token billed, cached or not", s.Usage.InputTokens)
+	}
+	if s.Usage.OutputTokens != 11 {
+		t.Errorf("output tokens = %d", s.Usage.OutputTokens)
+	}
+}
+
+// TestUsageIsKeptFromRecordsThatAreNotTurns covers a record whose only block is
+// one this adapter does not map. It becomes no turn, and its tokens were
+// therefore dropped — a fallback record in the measured store carried 114,000
+// of them.
+func TestUsageIsKeptFromRecordsThatAreNotTurns(t *testing.T) {
+	s := loadOnly(t, `
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"user","content":"go"}}
+{"type":"assistant","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:01Z","message":{"role":"assistant","model":"m","usage":{"input_tokens":2,"cache_read_input_tokens":110821,"output_tokens":0},"content":[{"type":"fallback","from":{"model":"a"},"to":{"model":"b"}}]}}
+`)
+	if len(s.Turns) != 1 {
+		t.Fatalf("got %d turns, want 1; a record with no mapped block is not a turn", len(s.Turns))
+	}
+	if s.Usage.InputTokens != 110823 {
+		t.Errorf("input tokens = %d, want 110823; the harness billed for the record either way", s.Usage.InputTokens)
+	}
+}
+
+// TestWallIsMeasuredAcrossTheTimestampsThatExist covers a duration computed as
+// last minus first with no guard on either end: out-of-order records made it
+// negative on two transcripts in the measured store, and a missing first
+// timestamp saturated it to 292 years.
+func TestWallIsMeasuredAcrossTheTimestampsThatExist(t *testing.T) {
+	t.Run("records out of order", func(t *testing.T) {
+		s := loadOnly(t, `
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:01:00Z","message":{"role":"user","content":"go"}}
+{"type":"assistant","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"assistant","model":"m","content":[{"type":"text","text":"done"}]}}
+`)
+		if s.Usage.Wall != time.Minute {
+			t.Errorf("wall = %v, want 1m across the timestamps present", s.Usage.Wall)
+		}
+	})
+
+	t.Run("a missing first timestamp", func(t *testing.T) {
+		s := loadOnly(t, `
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","message":{"role":"user","content":"go"}}
+{"type":"assistant","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:30Z","message":{"role":"assistant","model":"m","content":[{"type":"text","text":"done"}]}}
+`)
+		if s.Usage.Wall != 0 {
+			t.Errorf("wall = %v, want 0; one usable timestamp measures no span", s.Usage.Wall)
+		}
+	})
+
+	t.Run("no timestamp at all", func(t *testing.T) {
+		s := loadOnly(t, `
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","message":{"role":"user","content":"go"}}
+`)
+		if s.Usage.Wall != 0 {
+			t.Errorf("wall = %v, want 0", s.Usage.Wall)
+		}
+	})
+}
+
+// TestVersionNamesOneRelease covers a field a heartbeat check compares the
+// current harness version against. Joining several into one string made that
+// comparison unable to match on exactly the sessions that had already seen a
+// bump.
+func TestVersionNamesOneRelease(t *testing.T) {
+	s := loadOnly(t, `
+{"type":"user","version":"2.1.219","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"user","content":"go"}}
+{"type":"assistant","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:01Z","message":{"role":"assistant","model":"m","content":[{"type":"text","text":"done"}]}}
+`)
+	if s.Fidelity.Version != "2.1.220" {
+		t.Errorf("version = %q, want the release the session was last written by", s.Fidelity.Version)
+	}
+	if !s.Fidelity.Verified {
+		t.Error("both releases have been read against, and the session was marked unverified")
+	}
+}
+
+// TestDelegatedWorkKeepsItsResultsAndItsTokens covers the branch that returned
+// to the top of the loop before a delegated call could be indexed or its tokens
+// counted: results never paired, and usage dropped rather than moved to the
+// delegation it belongs to.
+func TestDelegatedWorkKeepsItsResultsAndItsTokens(t *testing.T) {
+	s := loadOnly(t, `
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"user","content":"go"}}
+{"type":"assistant","version":"2.1.220","sessionId":"s","cwd":"/w","isSidechain":true,"timestamp":"2026-01-01T00:00:05Z","message":{"role":"assistant","model":"m","usage":{"input_tokens":40,"cache_read_input_tokens":60,"output_tokens":9},"content":[{"type":"tool_use","id":"d1","name":"Bash","input":{"command":"ls"}}]}}
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","isSidechain":true,"timestamp":"2026-01-01T00:00:06Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"d1","content":"a b c"}]}}
+`)
+	if len(s.Delegated) != 1 {
+		t.Fatalf("delegated = %+v, want one delegation", s.Delegated)
+	}
+	d := s.Delegated[0]
+	if len(d.Turns) != 1 || len(d.Turns[0].Tools) != 1 {
+		t.Fatalf("delegated turns = %+v", d.Turns)
+	}
+	if got := d.Turns[0].Tools[0].Result; got == nil || got.Text != "a b c" {
+		t.Errorf("delegated result = %+v, want the answer two lines below the call", got)
+	}
+	if d.Usage.InputTokens != 100 || d.Usage.OutputTokens != 9 {
+		t.Errorf("delegation usage = %+v, want the sub-agent's own tokens", d.Usage)
+	}
+	if s.Usage.InputTokens != 0 || s.Usage.OutputTokens != 0 {
+		t.Errorf("session usage = %+v, want delegated work excluded from it", s.Usage)
+	}
+}
+
+// TestAnOrphanResultWithdrawsTheOrderClaim covers a result whose call is absent
+// from the transcript. It is dropped either way — there is nothing to attach it
+// to — but a missing call means a prefix of the session is missing, which is
+// exactly what OrderComplete exists to report.
+func TestAnOrphanResultWithdrawsTheOrderClaim(t *testing.T) {
+	s := loadOnly(t, `
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"user","content":"go"}}
+{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:01Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"gone","content":"ok"}]}}
+`)
+	if s.OrderComplete {
+		t.Error("order was claimed complete while a result answers a call the transcript does not hold")
+	}
+}
+
+// TestAResultPairsAcrossAReallocatedTurnSlice pins the invariant the pairing
+// used to rest on by accident. Registering a pointer into a turn's tool slice
+// survives the turn slice growing, and would be orphaned in silence by any later
+// change that appended a call to a turn already stored.
+func TestAResultPairsAcrossAReallocatedTurnSlice(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(`{"type":"assistant","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"assistant","model":"m","content":[{"type":"tool_use","id":"first","name":"Bash","input":{"command":"ls"}}]}}` + "\n")
+	for i := range 200 {
+		fmt.Fprintf(&b, `{"type":"assistant","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"assistant","model":"m","content":[{"type":"text","text":"filler %d"}]}}`+"\n", i)
+	}
+	b.WriteString(`{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:01Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"first","content":"late"}]}}` + "\n")
+
+	s := loadOnly(t, b.String())
+	if got := s.Turns[0].Tools[0].Result; got == nil || got.Text != "late" {
+		t.Errorf("result = %+v, want the answer that arrived 200 turns later", got)
+	}
+}
+
+// TestAnEmptyTranscriptIsMalformed covers a file that loaded as a complete
+// session in which nothing happened. A truncated or zero-byte transcript is not
+// that, and claiming to know the complete order of nothing is a claim about
+// evidence that is not there.
+func TestAnEmptyTranscriptIsMalformed(t *testing.T) {
+	for name, body := range map[string]string{
+		"empty":            "",
+		"blank lines":      "\n\n\n",
+		"bookkeeping only": `{"type":"queue-operation"}` + "\n" + `{"type":"ai-title"}` + "\n",
+		"a fork record":    `{"type":"fork-context-ref","parentSessionId":"ancestor"}` + "\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := parse(context.Background(), strings.NewReader(body)); !errors.Is(err, port.ErrMalformed) {
+				t.Errorf("parse returned %v, want ErrMalformed", err)
+			}
+		})
+	}
+}
+
+// TestAnOverlongLineIsUnsupportedNotMalformed covers this adapter's own limit
+// being reported as damage to the source. The three sentinels reach different
+// verdicts, and Assayer's own caps must never produce the one that looks like a
+// regression.
+func TestAnOverlongLineIsUnsupportedNotMalformed(t *testing.T) {
+	line := `{"type":"user","version":"2.1.220","sessionId":"s","cwd":"/w","timestamp":"2026-01-01T00:00:00Z","message":{"role":"user","content":"` +
+		strings.Repeat("x", maxLine) + `"}}` + "\n"
+	_, err := parse(context.Background(), strings.NewReader(line))
+	if !errors.Is(err, port.ErrUnsupported) {
+		t.Errorf("parse returned %v, want ErrUnsupported; the source is intact and this adapter cannot read it", err)
+	}
+	if errors.Is(err, port.ErrMalformed) {
+		t.Error("an over-long line was reported as damage to the transcript")
+	}
+}
+
+// TestALineWithNoRecordTypeIsMalformed covers a null or type-less line, which
+// unmarshals into a zero record and was refused as an unknown record type ""  —
+// the wrong sentinel and a misleading reason.
+func TestALineWithNoRecordTypeIsMalformed(t *testing.T) {
+	for _, body := range []string{"null\n", `{"uuid":"u1"}` + "\n"} {
+		_, err := parse(context.Background(), strings.NewReader(body))
+		if !errors.Is(err, port.ErrMalformed) {
+			t.Errorf("parse of %q returned %v, want ErrMalformed", body, err)
+		}
+	}
+}
+
+// TestAByteOrderMarkIsNotDamage covers a first line prefixed with a BOM. No
+// file in the measured store carries one; refusing a whole transcript over
+// three bytes of encoding preamble would be a manufactured failure.
+func TestAByteOrderMarkIsNotDamage(t *testing.T) {
+	s := loadOnly(t, "\ufeff"+strings.TrimSpace(transcriptWithATool))
+	if len(s.Turns) != 3 {
+		t.Errorf("got %d turns, want 3", len(s.Turns))
+	}
+}
+
+// TestDiscoverFindsADirectoryWholeNameNeedsEncoding covers the query that
+// matched almost nothing. The store replaces every character outside
+// [A-Za-z0-9-] in a path, not just the separator: of 300 project directories
+// recovered from the working directory they record, 300 need the wider rule and
+// 234 are missed by replacing slashes alone.
+func TestDiscoverFindsADirectoryWholeNameNeedsEncoding(t *testing.T) {
+	root := writeStoreIn(t, "-tmp-my-project-x-2", "session.jsonl", transcriptWithATool)
+	a := Adapter{Root: root}
+
+	refs, err := a.Discover(context.Background(), port.Query{Dir: "/tmp/my.project_x.2"})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(refs) != 1 {
+		t.Errorf("a directory containing punctuation returned %d refs, want 1", len(refs))
+	}
+
+	// The comparison was a substring test, so a query naming a prefix of another
+	// project's path matched it.
+	if refs, _ := a.Discover(context.Background(), port.Query{Dir: "/tmp/my"}); len(refs) != 0 {
+		t.Errorf("a query naming a different directory returned %d refs", len(refs))
 	}
 }

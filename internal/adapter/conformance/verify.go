@@ -21,6 +21,10 @@ import (
 // tripped, which arrives with each adapter and depends on a redaction gate that
 // is not trustworthy yet. An adapter passing Verify is well behaved; it has not
 // thereby been shown to parse anything correctly.
+//
+// The capability check runs one way, for the reason given in coverage.go: a
+// value outside a declared capability fails here, a capability declared whole
+// and never filled does not.
 func Verify(t *testing.T, c port.Capture) {
 	t.Helper()
 	ctx := context.Background()

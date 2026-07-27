@@ -45,10 +45,11 @@ type Capture interface {
 // Query narrows a discovery. Its zero value means everything.
 //
 // It exists because discovery is not cheap: one machine held 2,485 session
-// records after a few months, and a reference's label is derived from a
-// session's contents, so listing everything means opening everything. The three
-// narrowings here are the ones a command line actually asks for. Adding them
-// later would be a breaking change to an interface published in this phase.
+// records after a few months — 741 of them sessions in their own right, the rest
+// sidecars — and a reference's label is derived from a session's contents, so
+// listing everything means opening everything. The narrowings here are the ones
+// something actually asks for; adding one later would be a breaking change to an
+// interface published in this phase.
 type Query struct {
 	// Dir limits results to sessions that worked in this directory.
 	Dir string
@@ -56,6 +57,21 @@ type Query struct {
 	Since time.Time
 	// Limit caps the number returned. Zero means no cap.
 	Limit int
+
+	// Native limits results to the session the harness itself calls this — the
+	// value an adapter puts in Lineage.ID.
+	//
+	// Unlike the three above, no command line asks for this. The run seam does:
+	// administering a sitting yields the harness's own identifier for the
+	// session it produced, and turning that into a Session means asking the
+	// paired capture adapter for it by name. Without this the only way to find a
+	// session just created is to guess at the newest one in a directory, which
+	// is a race whenever two sittings share a workspace.
+	//
+	// A narrowing rather than a separate lookup method, so that an adapter with
+	// no stable identifier of its own returns nothing instead of implementing a
+	// method it cannot answer.
+	Native string
 }
 
 // Ref identifies a session to the adapter that produced it.

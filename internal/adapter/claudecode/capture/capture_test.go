@@ -658,3 +658,97 @@ func TestDiscoverFindsADirectoryWholeNameNeedsEncoding(t *testing.T) {
 		t.Errorf("a query naming a different directory returned %d refs", len(refs))
 	}
 }
+
+// TestDiscoverFindsASessionByItsNativeIdentifier is what the run seam needs.
+// Administering a sitting yields the harness's own identifier for the session it
+// produced, and turning that into a Session means asking for it by name.
+// Guessing at the newest transcript in a directory instead is a race the moment
+// two sittings share a workspace.
+func TestDiscoverFindsASessionByItsNativeIdentifier(t *testing.T) {
+	const wanted = "de9e5ae2-218a-4bee-8552-fa0ef89c607d"
+	const other = "3cd75529-412f-44ed-93be-45cf04679e95"
+
+	root := writeStoreIn(t, "-work-project", wanted+".jsonl",
+		strings.ReplaceAll(transcriptWithATool, `"sessionId":"s1"`, `"sessionId":"`+wanted+`"`))
+	if err := os.WriteFile(filepath.Join(root, "-work-project", other+".jsonl"),
+		[]byte(strings.ReplaceAll(transcriptWithATool, `"sessionId":"s1"`, `"sessionId":"`+other+`"`)+"\n"),
+		0o644); err != nil {
+		t.Fatalf("write second transcript: %v", err)
+	}
+
+	a := Adapter{Root: root}
+	refs, err := a.Discover(context.Background(), port.Query{Native: wanted})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(refs) != 1 {
+		t.Fatalf("Discover by native identifier returned %d refs, want 1", len(refs))
+	}
+
+	s, err := a.Load(context.Background(), refs[0])
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if s.Lineage.ID != wanted {
+		t.Errorf("loaded session %q, want %q; the narrowing matched a different "+
+			"session than the one named", s.Lineage.ID, wanted)
+	}
+
+	none, err := a.Discover(context.Background(), port.Query{Native: "not-a-session"})
+	if err != nil {
+		t.Fatalf("Discover for an unknown identifier: %v", err)
+	}
+	if len(none) != 0 {
+		t.Errorf("an unknown native identifier returned %d refs, want 0", len(none))
+	}
+}
+
+// TestNativeMatchesTheFileNameAndSaysSo pins the narrowing's one limitation
+// rather than leaving it to be discovered.
+//
+// The match is on the file's name, because the store names a transcript for the
+// session it holds — measured across 400 sampled transcripts, with no exception
+// and no transcript missing the identifier — and because matching on contents
+// instead would mean opening every file in a store that held 2,485 of them. A
+// transcript whose contents disagreed with its name would not be found. That is
+// a deliberate trade and it fails closed: nothing is returned, rather than the
+// wrong session.
+func TestNativeMatchesTheFileNameAndSaysSo(t *testing.T) {
+	root := writeStore(t, "named-one-thing.jsonl", transcriptWithATool) // contents say s1
+
+	a := Adapter{Root: root}
+	refs, err := a.Discover(context.Background(), port.Query{Native: "s1"})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(refs) != 0 {
+		t.Errorf("Discover matched a transcript whose name is not its session "+
+			"identifier; the narrowing is documented as a name match and must "+
+			"fail closed, got %d refs", len(refs))
+	}
+
+	// The positive half of the same sentence. Without it the test proves only
+	// that the narrowing rejects things, which a narrowing that rejects
+	// everything would also do.
+	byName, err := a.Discover(context.Background(), port.Query{Native: "named-one-thing"})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(byName) != 1 {
+		t.Fatalf("Discover by the file's name returned %d refs, want 1", len(byName))
+	}
+
+	// Equality, not containment. This repository has already shipped that bug
+	// once on the adjacent Dir narrowing, where a query for /work matched a
+	// project named for /workspace/other.
+	for _, prefix := range []string{"named", "one-thing", "amed-one-thin"} {
+		partial, err := a.Discover(context.Background(), port.Query{Native: prefix})
+		if err != nil {
+			t.Fatalf("Discover: %v", err)
+		}
+		if len(partial) != 0 {
+			t.Errorf("Discover matched %d refs for the partial identifier %q; the "+
+				"narrowing must compare whole names", len(partial), prefix)
+		}
+	}
+}

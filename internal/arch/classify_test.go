@@ -69,6 +69,7 @@ var classification = map[string]class{
 
 	"internal/adapter/conformance":        classAdapter,
 	"internal/adapter/claudecode/capture": classAdapter,
+	"internal/adapter/claudecode/run":     classAdapter,
 }
 
 // allowedInternal returns the in-module packages a class may import.

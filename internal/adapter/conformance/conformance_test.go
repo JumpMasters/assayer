@@ -211,3 +211,47 @@ func TestExemptFieldsAreOnlyAboutTheCapture(t *testing.T) {
 		}
 	}
 }
+
+// TestReferenceRunSatisfiesTheContract runs the run kit against the reference
+// runner, which is the only adapter here that declares it cannot do things — so
+// it is the only one whose refusals the kit can exercise.
+func TestReferenceRunSatisfiesTheContract(t *testing.T) {
+	VerifyRun(t, ReferenceRun{})
+}
+
+// TestBeyondNamesEveryUndeclaredCondition proves the run kit has teeth. Verify
+// passing is only meaningful if the thing it calls would have found something,
+// and an adapter that guarantees everything makes the check vacuous — which is
+// exactly the shape the measured adapter has.
+func TestBeyondNamesEveryUndeclaredCondition(t *testing.T) {
+	nothing := assay.Guarantees{}
+	cases := beyond(nothing)
+	if len(cases) != 6 {
+		t.Fatalf("beyond produced %d cases for an adapter that guarantees "+
+			"nothing, want one per condition an assignment can carry (6)", len(cases))
+	}
+	for i := range cases {
+		c := &cases[i]
+		if c.assignment.Instruction == "" {
+			t.Errorf("the case for %s has no instruction; a refusal would prove "+
+				"only that the empty assignment was caught", c.what)
+		}
+		if err := port.Refuse(nothing, &c.assignment); err == nil {
+			t.Errorf("the case for %s is not refused by an adapter that "+
+				"guarantees nothing; the kit would pass an adapter that dropped it", c.what)
+		}
+	}
+
+	everything := assay.Guarantees{
+		Budget:   assay.EnforcementNative,
+		Wall:     assay.EnforcementNative,
+		Turns:    assay.EnforcementNative,
+		Model:    true,
+		Tools:    true,
+		Settings: true,
+	}
+	if cases := beyond(everything); len(cases) != 0 {
+		t.Errorf("beyond produced %d cases for an adapter that guarantees "+
+			"everything, want none", len(cases))
+	}
+}

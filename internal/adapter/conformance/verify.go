@@ -76,6 +76,23 @@ func Verify(t *testing.T, c port.Capture) {
 		}
 	})
 
+	t.Run("discover by an unknown native identifier is empty, not an error", func(t *testing.T) {
+		// The narrowing the run seam depends on. An adapter that ignores it
+		// returns whatever it would have returned anyway, and a sitting is then
+		// attributed to whichever session happened to sort first — the race the
+		// field exists to remove, made silent. Checking that it fails closed is
+		// the half of the contract a kit can check without knowing the store.
+		refs, err := c.Discover(ctx, port.Query{Native: "definitely-not-a-session"})
+		if err != nil {
+			t.Fatalf("Discover by an unknown native identifier returned %v, want no error", err)
+		}
+		if len(refs) != 0 {
+			t.Errorf("Discover by an unknown native identifier returned %d refs, want 0; "+
+				"an adapter that cannot resolve one must return nothing rather than "+
+				"something", len(refs))
+		}
+	})
+
 	t.Run("load of an unknown ref reports not found", func(t *testing.T) {
 		_, err := c.Load(ctx, port.Ref{ID: "definitely-not-a-session"})
 		if !errors.Is(err, port.ErrNotFound) {

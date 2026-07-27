@@ -133,6 +133,8 @@ func TestEnumsImplementTextCodecs(t *testing.T) {
 		_ encoding.TextMarshaler   = Outcome(0)
 		_ encoding.TextMarshaler   = Capability(0)
 		_ encoding.TextMarshaler   = CapabilitySet(0)
+		_ encoding.TextMarshaler   = StopReason(0)
+		_ encoding.TextMarshaler   = Enforcement(0)
 		_ encoding.TextUnmarshaler = new(Role)
 		_ encoding.TextUnmarshaler = new(Tier)
 		_ encoding.TextUnmarshaler = new(ToolKind)
@@ -140,6 +142,8 @@ func TestEnumsImplementTextCodecs(t *testing.T) {
 		_ encoding.TextUnmarshaler = new(Outcome)
 		_ encoding.TextUnmarshaler = new(Capability)
 		_ encoding.TextUnmarshaler = new(CapabilitySet)
+		_ encoding.TextUnmarshaler = new(StopReason)
+		_ encoding.TextUnmarshaler = new(Enforcement)
 	)
 }
 
@@ -158,5 +162,90 @@ func TestOnlyGenuineExitsDecide(t *testing.T) {
 		if got := o.Decides(); got != want {
 			t.Errorf("Outcome(%v).Decides() = %v, want %v", o, got, want)
 		}
+	}
+}
+
+// TestOnlyCompleteSittingsDecide is the same boundary at the level of a whole
+// sitting. A run stopped by a cap did not finish the work, so nothing it
+// produced is evidence about whether the work can still be done; a harness that
+// fell over is evidence about the harness. One value survives.
+func TestOnlyCompleteSittingsDecide(t *testing.T) {
+	deciding := map[StopReason]bool{
+		StopUnknown:  false,
+		StopComplete: true,
+		StopBudget:   false,
+		StopTurns:    false,
+		StopWall:     false,
+		StopDenied:   false,
+		StopFailed:   false,
+	}
+	for s, want := range deciding {
+		if got := s.Decides(); got != want {
+			t.Errorf("StopReason(%v).Decides() = %v, want %v", s, got, want)
+		}
+	}
+	if StopReason(0).String() != "unknown" {
+		t.Errorf("StopReason zero value is %q, want \"unknown\"; an unfilled "+
+			"sitting must not read as a completed one", StopReason(0))
+	}
+}
+
+// TestZeroEnforcementPromisesNothing pins the one enumeration here whose zero
+// value is deliberately not "unknown".
+//
+// Enforcement's safe default is not ignorance but refusal: an unfilled
+// Guarantees must promise nothing, so that an adapter which forgets to declare a
+// cap refuses assignments carrying it rather than accepting them and silently
+// keeping no cap at all.
+func TestZeroEnforcementPromisesNothing(t *testing.T) {
+	if got := Enforcement(0); got != EnforcementNone {
+		t.Errorf("Enforcement zero value is %v, want EnforcementNone", got)
+	}
+	if got := (Guarantees{}).Budget; got != EnforcementNone {
+		t.Errorf("an unfilled Guarantees declares Budget %v, want EnforcementNone", got)
+	}
+}
+
+// TestSittingEnumsRoundTripAsText extends the names-on-the-wire rule to the
+// enumerations the run seam adds. Sittings land in a ledger that outlives the
+// binary that wrote them.
+func TestSittingEnumsRoundTripAsText(t *testing.T) {
+	stops := []StopReason{
+		StopUnknown, StopComplete, StopBudget, StopTurns, StopWall, StopDenied, StopFailed,
+	}
+	for _, want := range stops {
+		b, err := want.MarshalText()
+		if err != nil {
+			t.Fatalf("StopReason(%v).MarshalText: %v", want, err)
+		}
+		var got StopReason
+		if err := got.UnmarshalText(b); err != nil {
+			t.Fatalf("StopReason.UnmarshalText(%q): %v", b, err)
+		}
+		if got != want {
+			t.Errorf("StopReason round-trip: got %v, want %v", got, want)
+		}
+	}
+
+	levels := []Enforcement{EnforcementNone, EnforcementSupervised, EnforcementNative}
+	for _, want := range levels {
+		b, _ := want.MarshalText()
+		var got Enforcement
+		if err := got.UnmarshalText(b); err != nil {
+			t.Fatalf("Enforcement.UnmarshalText(%q): %v", b, err)
+		}
+		if got != want {
+			t.Errorf("Enforcement round-trip: got %v, want %v", got, want)
+		}
+	}
+
+	var bad StopReason
+	if err := bad.UnmarshalText([]byte("nope")); err == nil {
+		t.Error("StopReason.UnmarshalText accepted an unknown name; a sitting " +
+			"written by a newer writer must not decode as an unrelated stop")
+	}
+	var badLevel Enforcement
+	if err := badLevel.UnmarshalText([]byte("nope")); err == nil {
+		t.Error("Enforcement.UnmarshalText accepted an unknown name")
 	}
 }

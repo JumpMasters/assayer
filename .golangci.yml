@@ -40,6 +40,13 @@ linters:
           deny:
             - pkg: github.com/JumpMasters/assayer
               desc: "internal/adapter/claudecode/capture is class adapter: within this module it may import only internal/assay, internal/port (ADR-0005)"
+        adapter-claudecode-run:
+          list-mode: lax
+          files: ["**/internal/adapter/claudecode/run/*.go", "!$test"]
+          allow: [github.com/JumpMasters/assayer/internal/assay, github.com/JumpMasters/assayer/internal/port]
+          deny:
+            - pkg: github.com/JumpMasters/assayer
+              desc: "internal/adapter/claudecode/run is class adapter: within this module it may import only internal/assay, internal/port (ADR-0005)"
         adapter-conformance:
           list-mode: lax
           files: ["**/internal/adapter/conformance/*.go", "!$test"]

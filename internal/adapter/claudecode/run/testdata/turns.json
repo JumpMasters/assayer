@@ -1,0 +1,75 @@
+{
+  "is_error": true,
+  "duration_api_ms": 4156,
+  "num_turns": 2,
+  "stop_reason": "tool_use",
+  "session_id": "de9e5ae2-218a-4bee-8552-fa0ef89c607d",
+  "total_cost_usd": 0.0047227499999999995,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 197,
+    "cache_read_input_tokens": 1455,
+    "output_tokens": 86,
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 197
+    },
+    "inference_geo": "global",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 86,
+        "cache_read_input_tokens": 1455,
+        "cache_creation_input_tokens": 197,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 197,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 534,
+      "outputTokens": 14,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.0006039999999999999,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty"
+    },
+    "claude-opus-5[1m]": {
+      "inputTokens": 2,
+      "outputTokens": 86,
+      "cacheReadInputTokens": 1455,
+      "cacheCreationInputTokens": 197,
+      "webSearchRequests": 0,
+      "costUSD": 0.00411875,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "canonicalModel": "claude-opus-5",
+      "provider": "firstParty"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "max_turns",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subtype": "error_max_turns",
+  "errors": [
+    "Reached maximum number of turns (1)"
+  ],
+  "type": "result",
+  "duration_ms": 3012,
+  "uuid": "bad7507c-2108-43a7-ba25-b89282550835"
+}

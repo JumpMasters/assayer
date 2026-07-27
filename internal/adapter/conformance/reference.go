@@ -88,6 +88,14 @@ func (r Reference) Discover(_ context.Context, q Query) ([]port.Ref, error) {
 	if q.Dir != "" && q.Dir != "/work" {
 		return []port.Ref{}, nil
 	}
+	// This harness has no session identifier of its own — it declares no
+	// lineage — so it can never answer a query by one. Returning nothing is the
+	// documented behaviour for that case, and modelling it here is the point:
+	// the measured harness happens to have a stable identifier, so it would
+	// otherwise be the only shape the seam was ever exercised against.
+	if q.Native != "" {
+		return []port.Ref{}, nil
+	}
 	if q.Limit > 0 && q.Limit < len(refs) {
 		refs = refs[:q.Limit]
 	}

@@ -90,9 +90,14 @@ func beyond(g assay.Guarantees) []struct {
 	what       string
 	assignment assay.Assignment
 } {
-	// The instruction is present throughout, so that a refusal proves the
-	// adapter refused the condition under test rather than the empty assignment.
-	base := assay.Assignment{Instruction: "do the thing"}
+	// The instruction and the directory are present throughout, so that a
+	// refusal proves the adapter refused the condition under test rather than an
+	// assignment that was incomplete to begin with. The directory is never
+	// reached: every case here is refused before a process starts.
+	base := assay.Assignment{
+		Instruction: "do the thing",
+		Dir:         "/nonexistent-workspace-for-conformance",
+	}
 
 	var out []struct {
 		what       string

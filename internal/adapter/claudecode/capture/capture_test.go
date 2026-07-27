@@ -726,4 +726,29 @@ func TestNativeMatchesTheFileNameAndSaysSo(t *testing.T) {
 			"identifier; the narrowing is documented as a name match and must "+
 			"fail closed, got %d refs", len(refs))
 	}
+
+	// The positive half of the same sentence. Without it the test proves only
+	// that the narrowing rejects things, which a narrowing that rejects
+	// everything would also do.
+	byName, err := a.Discover(context.Background(), port.Query{Native: "named-one-thing"})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(byName) != 1 {
+		t.Fatalf("Discover by the file's name returned %d refs, want 1", len(byName))
+	}
+
+	// Equality, not containment. This repository has already shipped that bug
+	// once on the adjacent Dir narrowing, where a query for /work matched a
+	// project named for /workspace/other.
+	for _, prefix := range []string{"named", "one-thing", "amed-one-thin"} {
+		partial, err := a.Discover(context.Background(), port.Query{Native: prefix})
+		if err != nil {
+			t.Fatalf("Discover: %v", err)
+		}
+		if len(partial) != 0 {
+			t.Errorf("Discover matched %d refs for the partial identifier %q; the "+
+				"narrowing must compare whole names", len(partial), prefix)
+		}
+	}
 }

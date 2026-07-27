@@ -17,8 +17,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"math"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -83,6 +83,63 @@ func (Adapter) Guarantees() assay.Guarantees {
 // only by a wall-clock cap.
 const stderrTail = 8 << 10
 
+// waitDelay is how long a killed harness has to release the output pipes before
+// they are closed underneath it. Long enough that a process shutting down
+// cleanly still gets its last words into the sitting, short enough that a
+// wall-clock cap remains a bound someone can plan around.
+const waitDelay = 5 * time.Second
+
+// passedEnv are the environment variables a sitting inherits. Everything else is
+// dropped.
+//
+// An allowlist rather than a denylist, and the reason is specific rather than
+// hygienic. The harness reads ANTHROPIC_MODEL, ANTHROPIC_BASE_URL and
+// CLAUDE_CODE_USE_BEDROCK, among others, from the environment. A developer with
+// ANTHROPIC_MODEL exported would get sittings run against a model no report
+// names, on a tool whose entire purpose is noticing when the model changed. A
+// denylist would leave the next such variable to be discovered by whoever it
+// misled.
+//
+// Two consequences are stated rather than hidden. A machine that reaches the
+// vendor through Bedrock or Vertex by environment alone cannot run a sitting
+// here: that backend is a condition an exam should name, and no field names it
+// yet, so the run fails loudly instead of quietly measuring something else. And
+// --bare reads authentication only from ANTHROPIC_API_KEY or a helper named in
+// --settings, so a machine signed in interactively cannot run a sitting either.
+// Both surface as an errored sitting, never as a regression.
+var passedEnv = []string{
+	// Authentication, which is the one thing a sitting cannot supply itself.
+	"ANTHROPIC_API_KEY",
+	"ANTHROPIC_AUTH_TOKEN",
+	// The ordinary shape of a working machine. The agent runs shell commands in
+	// the workspace, and an empty PATH breaks every one of them.
+	"HOME",
+	"PATH",
+	"SHELL",
+	"TMPDIR",
+	"LANG",
+	"LC_ALL",
+	"TZ",
+}
+
+// passEnv filters an environment down to passedEnv, preserving order.
+func passEnv(env []string) []string {
+	keep := make(map[string]bool, len(passedEnv))
+	for _, name := range passedEnv {
+		keep[name] = true
+	}
+	// Non-nil even when empty: a nil Env makes os/exec inherit the parent's,
+	// which is the whole thing this exists to prevent.
+	out := []string{}
+	for _, kv := range env {
+		name, _, ok := strings.Cut(kv, "=")
+		if ok && keep[name] {
+			out = append(out, kv)
+		}
+	}
+	return out
+}
+
 // Sit implements port.Run.
 func (a Adapter) Sit(ctx context.Context, as *assay.Assignment) (assay.Sitting, error) {
 	if err := port.Refuse(a.Guarantees(), as); err != nil {
@@ -94,12 +151,12 @@ func (a Adapter) Sit(ctx context.Context, as *assay.Assignment) (assay.Sitting, 
 		bin = "claude"
 	}
 
-	// --bare skips every ambient source of configuration; --setting-sources
-	// with an empty list skips the settings files it does not cover. Together
-	// they are the hermeticity keystone: the sitting sees exactly the
-	// configuration the assignment names and nothing the machine happens to
-	// have lying about. --fallback-model is deliberately absent rather than
-	// disabled — it is opt-in on this binary, so not passing it is off, and
+	// --bare skips the ambient configuration a harness reads from disk, and
+	// --setting-sources with an empty list skips the settings files it does not
+	// cover. Neither touches the environment, which is the third source and the
+	// one that can change the model without appearing anywhere in the result;
+	// passEnv below handles it. --fallback-model is deliberately absent rather
+	// than disabled — it is opt-in on this binary, so not passing it is off, and
 	// passing it would let the run silently change the model under examination.
 	args := []string{
 		"--print",
@@ -133,6 +190,14 @@ func (a Adapter) Sit(ctx context.Context, as *assay.Assignment) (assay.Sitting, 
 
 	cmd := exec.CommandContext(runCtx, bin, args...)
 	cmd.Dir = as.Dir
+	cmd.Env = passEnv(os.Environ())
+	// Killing the process is not the same as being able to stop waiting for it.
+	// exec.CommandContext ends the child it started, and Wait then reads the
+	// output pipes until end of file — which never arrives while any descendant
+	// that inherited them is alive. Without a delay, one forking harness turns a
+	// wall cap into a hang, and the guarantee this adapter declares would be one
+	// it holds only against processes that do not fork.
+	cmd.WaitDelay = waitDelay
 	// The instruction goes on stdin, not in the argument list. A distilled
 	// instruction folds in every mid-session correction and has no bound; an
 	// argument list does.
@@ -150,10 +215,10 @@ func (a Adapter) Sit(ctx context.Context, as *assay.Assignment) (assay.Sitting, 
 		Adapter:    a.ID(),
 		Tier:       a.Tier(),
 		Guarantees: a.Guarantees(),
+		Wall:       wall,
 		Stderr:     stderr.String(),
 		ExitCode:   exitCode(cmd),
 	}
-	sitting.Usage.Wall = wall
 
 	// Cancellation by the caller is the caller's business and produces no
 	// sitting. Cancellation by this adapter's own wall cap produces one, because
@@ -161,13 +226,19 @@ func (a Adapter) Sit(ctx context.Context, as *assay.Assignment) (assay.Sitting, 
 	if err := ctx.Err(); err != nil {
 		return assay.Sitting{}, err
 	}
-	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+	// runErr != nil closes a window: a run that finished cleanly a moment before
+	// the deadline fired would otherwise be reported as capped, discarding a
+	// result that was paid for and is sitting in stdout.
+	if errors.Is(runCtx.Err(), context.DeadlineExceeded) && runErr != nil {
 		sitting.Stop = assay.StopWall
 		return sitting, nil
 	}
 
-	var execErr *exec.Error
-	if errors.As(runErr, &execErr) || errors.Is(runErr, fs.ErrNotExist) || errors.Is(runErr, fs.ErrPermission) {
+	// Nothing started is a property of the process, not a shape of the error.
+	// Matching on error values instead meant classifying a missing binary, an
+	// unreadable one and a wrong-architecture one three different ways, and
+	// reporting a working directory that does not exist as a missing harness.
+	if cmd.Process == nil {
 		return assay.Sitting{}, fmt.Errorf("%w: %w", port.ErrUnavailable, runErr)
 	}
 
@@ -187,6 +258,7 @@ func (a Adapter) Sit(ctx context.Context, as *assay.Assignment) (assay.Sitting, 
 	sitting.Native = res.SessionID
 	sitting.Denials = res.denials()
 	sitting.Stop = res.stop()
+	sitting.Turns = res.NumTurns
 	sitting.Usage.CostMicroUSD = int64(math.Round(res.TotalCostUSD * 1e6))
 	// Every input token the harness billed for, cached or not, matching what the
 	// capture side counts. On the store measured there, cached input was 99.97%
@@ -209,6 +281,7 @@ type result struct {
 	Subtype      string  `json:"subtype"`
 	IsError      bool    `json:"is_error"`
 	SessionID    string  `json:"session_id"`
+	NumTurns     int     `json:"num_turns"`
 	TotalCostUSD float64 `json:"total_cost_usd"`
 
 	// The cache fields are nullable in the harness's own schema. Null decodes to

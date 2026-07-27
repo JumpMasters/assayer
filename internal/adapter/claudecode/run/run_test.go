@@ -24,8 +24,8 @@ import (
 // changing shape around it.
 const (
 	completed = "success.json" // a run that finished the work
-	turnCap   = "turns.json"   // stopped at --max-turns 1, exit 1
-	budgetCap = "budget.json"  // stopped at --max-budget-usd 0.001, exit 1
+	turnCap   = "turns.json"   // stopped at --max-turns 1
+	budgetCap = "budget.json"  // stopped at --max-budget-usd 0.001
 )
 
 // stub writes an executable standing in for the harness. The adapter drives a
@@ -47,17 +47,21 @@ func replays(t *testing.T, fixture string, code int) string {
 	if err != nil {
 		t.Fatalf("locating fixture %s: %v", fixture, err)
 	}
-	return stub(t, "cat "+abs+"\nexit "+strconv.Itoa(code))
+	return stub(t, "cat '"+abs+"'\nexit "+strconv.Itoa(code))
 }
 
-func work() *assay.Assignment {
-	return &assay.Assignment{Instruction: "make the failing test pass"}
+func work(t *testing.T) *assay.Assignment {
+	t.Helper()
+	return &assay.Assignment{
+		Instruction: "make the failing test pass",
+		Dir:         t.TempDir(),
+	}
 }
 
 func TestSitReadsARunThatFinished(t *testing.T) {
 	a := run.Adapter{Bin: replays(t, completed, 0)}
 
-	s, err := a.Sit(context.Background(), work())
+	s, err := a.Sit(context.Background(), work(t))
 	if err != nil {
 		t.Fatalf("Sit: %v", err)
 	}
@@ -77,8 +81,16 @@ func TestSitReadsARunThatFinished(t *testing.T) {
 	if s.ExitCode != 0 {
 		t.Errorf("ExitCode = %d, want 0", s.ExitCode)
 	}
-	if s.Usage.Wall <= 0 {
-		t.Error("Usage.Wall is not set; the span of the run is measured here, not reported")
+	if s.Wall <= 0 {
+		t.Error("Wall is not set; how long the run took is measured here, not reported")
+	}
+	if s.Usage.Wall != 0 {
+		t.Error("Usage.Wall is set; it means the span between a transcript's " +
+			"first and last timestamps, which is not what a sitting measures, and " +
+			"carrying both on one field invites a comparison between them")
+	}
+	if s.Turns != 1 {
+		t.Errorf("Turns = %d, want 1 as the fixture reports", s.Turns)
 	}
 }
 
@@ -90,7 +102,7 @@ func TestSitReadsARunThatFinished(t *testing.T) {
 func TestSitCountsEveryInputTokenAndTheMoney(t *testing.T) {
 	a := run.Adapter{Bin: replays(t, completed, 0)}
 
-	s, err := a.Sit(context.Background(), work())
+	s, err := a.Sit(context.Background(), work(t))
 	if err != nil {
 		t.Fatalf("Sit: %v", err)
 	}
@@ -103,6 +115,23 @@ func TestSitCountsEveryInputTokenAndTheMoney(t *testing.T) {
 	if s.Usage.OutputTokens != 4 {
 		t.Errorf("OutputTokens = %d, want 4", s.Usage.OutputTokens)
 	}
+
+	// The recorded completed run happens to have read nothing from cache, so on
+	// that fixture alone the sum is indistinguishable from one that ignores the
+	// field entirely — and by measurement that field carries 96.5% of input
+	// across the store. The capped run read 1455 tokens from cache and is the
+	// fixture that makes the claim testable.
+	capped := run.Adapter{Bin: replays(t, turnCap, 1)}
+	c, err := capped.Sit(context.Background(), work(t))
+	if err != nil {
+		t.Fatalf("Sit: %v", err)
+	}
+	const wantCappedInput = 2 + 197 + 1455
+	if c.Usage.InputTokens != wantCappedInput {
+		t.Errorf("InputTokens = %d, want %d; tokens read from cache are being "+
+			"dropped, which is most of what a run is billed for",
+			c.Usage.InputTokens, wantCappedInput)
+	}
 	// $0.010922250000000001 in the fixture. Money is carried as integer
 	// millionths precisely so that this comparison is exact.
 	if s.Usage.CostMicroUSD != 10922 {
@@ -111,9 +140,14 @@ func TestSitCountsEveryInputTokenAndTheMoney(t *testing.T) {
 }
 
 // TestSitReadsCapsFromTheHarnessOwnAccount is the ERROR-not-FAIL boundary at the
-// point it is easiest to get wrong. Both recorded cap hits exited 1 — the same
+// point it is easiest to get wrong. Both measured cap hits exited 1 — the same
 // status a harness returns when it has genuinely fallen over — so the exit code
 // cannot be the field that decides, and the subtype has to be.
+//
+// The stub is told to exit 1 because that is what the recorded runs did; the
+// status is not in the fixtures, which are stdout, so it is written down in
+// testdata/README.md instead. This test therefore proves the adapter reads the
+// subtype rather than the status, and does not corroborate the measurement.
 func TestSitReadsCapsFromTheHarnessOwnAccount(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -127,7 +161,7 @@ func TestSitReadsCapsFromTheHarnessOwnAccount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := run.Adapter{Bin: replays(t, tt.fixture, 1)}
 
-			s, err := a.Sit(context.Background(), work())
+			s, err := a.Sit(context.Background(), work(t))
 			if err != nil {
 				t.Fatalf("Sit: %v", err)
 			}
@@ -135,7 +169,7 @@ func TestSitReadsCapsFromTheHarnessOwnAccount(t *testing.T) {
 				t.Errorf("Stop = %v, want %v", s.Stop, tt.want)
 			}
 			if s.ExitCode != 1 {
-				t.Errorf("ExitCode = %d, want 1; the fixture is a real capped run", s.ExitCode)
+				t.Errorf("ExitCode = %d, want the status the stub was given", s.ExitCode)
 			}
 			if s.Stop.Decides() {
 				t.Error("a capped sitting permits a verdict; the work never finished, " +
@@ -158,7 +192,7 @@ func TestSitReadsCapsFromTheHarnessOwnAccount(t *testing.T) {
 func TestACappedSittingCanReportNoTokensAgainstRealMoney(t *testing.T) {
 	a := run.Adapter{Bin: replays(t, budgetCap, 1)}
 
-	s, err := a.Sit(context.Background(), work())
+	s, err := a.Sit(context.Background(), work(t))
 	if err != nil {
 		t.Fatalf("Sit: %v", err)
 	}
@@ -181,7 +215,7 @@ func TestSitAsksForAHermeticRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bin := stub(t, "printf '%s\\n' \"$@\" > "+argv+"\ncat > "+stdin+"\ncat "+abs)
+	bin := stub(t, "printf '%s\\n' \"$@\" > '"+argv+"'\ncat > '"+stdin+"'\ncat '"+abs+"'")
 
 	a := run.Adapter{Bin: bin}
 	assignment := assay.Assignment{
@@ -256,13 +290,46 @@ func TestSitAsksForAHermeticRun(t *testing.T) {
 	}
 }
 
+// TestSitOmitsFlagsTheAssignmentDidNotAskFor is the other half of the hermeticity
+// check. Sending --model "" or --settings "" on every default assignment would
+// pass the positive test above and change what the harness does; print mode
+// silently ignores settings that fail to validate, so it would not even be
+// visible at runtime.
+func TestSitOmitsFlagsTheAssignmentDidNotAskFor(t *testing.T) {
+	dir := t.TempDir()
+	argv := filepath.Join(dir, "argv")
+	abs, err := filepath.Abs(filepath.Join("testdata", completed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin := stub(t, "printf '%s\n' \"$@\" > '"+argv+"'\ncat '"+abs+"'")
+
+	assignment := work(t)
+	assignment.Dir = dir
+	if _, err := (run.Adapter{Bin: bin}).Sit(context.Background(), assignment); err != nil {
+		t.Fatalf("Sit: %v", err)
+	}
+
+	args := readArgs(t, argv)
+	for _, flag := range []string{
+		"--model", "--allowedTools", "--settings", "--max-budget-usd", "--max-turns",
+	} {
+		for _, arg := range args {
+			if arg == flag {
+				t.Errorf("the harness was given %s for an assignment that did not "+
+					"ask for it; argv was %q", flag, args)
+			}
+		}
+	}
+}
+
 func TestSitRunsInTheDirectoryItWasGiven(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "cwd")
-	bin := stub(t, "pwd > "+out)
+	bin := stub(t, "pwd > '"+out+"'")
 
 	a := run.Adapter{Bin: bin}
-	assignment := work()
+	assignment := work(t)
 	assignment.Dir = dir
 	if _, err := a.Sit(context.Background(), assignment); err != nil {
 		t.Fatalf("Sit: %v", err)
@@ -294,7 +361,7 @@ func TestSitRunsInTheDirectoryItWasGiven(t *testing.T) {
 // held open by a child it never knew about.
 func TestSitHoldsTheWallCapItself(t *testing.T) {
 	a := run.Adapter{Bin: stub(t, "exec sleep 30")}
-	assignment := work()
+	assignment := work(t)
 	assignment.Caps.Wall = 150 * time.Millisecond
 
 	started := time.Now()
@@ -310,8 +377,84 @@ func TestSitHoldsTheWallCapItself(t *testing.T) {
 	if s.Stop.Decides() {
 		t.Error("a sitting killed by the wall cap permits a verdict")
 	}
-	if elapsed > 10*time.Second {
+	if elapsed > 3*time.Second {
 		t.Errorf("Sit took %v against a 150ms cap; the cap is not being held", elapsed)
+	}
+}
+
+// TestTheWallCapSurvivesAForkingHarness is the case the previous version of this
+// file wrote around rather than defended against.
+//
+// Killing a process is not the same as being able to stop waiting for it:
+// exec.CommandContext ends the child it started, and the wait then reads the
+// output pipes until end of file, which never arrives while a grandchild still
+// holds them. Without cmd.WaitDelay this hangs indefinitely, and the guarantee
+// the adapter declares would be one it keeps only against harnesses that do not
+// fork — which the universal command-template runner, wrapping whatever a user
+// names, cannot promise.
+func TestTheWallCapSurvivesAForkingHarness(t *testing.T) {
+	a := run.Adapter{Bin: stub(t, "sleep 30 &\nsleep 30")}
+	assignment := work(t)
+	assignment.Caps.Wall = 150 * time.Millisecond
+
+	done := make(chan assay.Sitting, 1)
+	go func() {
+		s, err := a.Sit(context.Background(), assignment)
+		if err != nil {
+			t.Errorf("Sit: %v", err)
+		}
+		done <- s
+	}()
+
+	select {
+	case s := <-done:
+		if s.Stop != assay.StopWall {
+			t.Errorf("Stop = %v, want wall", s.Stop)
+		}
+	case <-time.After(20 * time.Second):
+		t.Fatal("Sit never returned against a 150ms wall cap; a descendant is " +
+			"holding the output pipes and nothing closes them")
+	}
+}
+
+// TestSitDoesNotHandTheHarnessTheMachinesEnvironment is the third source of
+// ambient configuration, and the one no flag covers. The harness reads its model
+// and its backend from the environment, so a developer with ANTHROPIC_MODEL
+// exported would otherwise get sittings run against a model no report names.
+func TestSitDoesNotHandTheHarnessTheMachinesEnvironment(t *testing.T) {
+	t.Setenv("ANTHROPIC_MODEL", "some-other-model")
+	t.Setenv("ANTHROPIC_BASE_URL", "https://somewhere.else.invalid")
+	t.Setenv("CLAUDE_CODE_USE_BEDROCK", "1")
+	t.Setenv("ANTHROPIC_API_KEY", "not-a-real-key")
+
+	dir := t.TempDir()
+	env := filepath.Join(dir, "env")
+	bin := stub(t, "env > '"+env+"'")
+
+	assignment := work(t)
+	assignment.Dir = dir
+	if _, err := (run.Adapter{Bin: bin}).Sit(context.Background(), assignment); err != nil {
+		t.Fatalf("Sit: %v", err)
+	}
+
+	got, err := os.ReadFile(env)
+	if err != nil {
+		t.Fatalf("reading the harness's environment: %v", err)
+	}
+	for _, name := range []string{"ANTHROPIC_MODEL", "ANTHROPIC_BASE_URL", "CLAUDE_CODE_USE_BEDROCK"} {
+		if strings.Contains(string(got), name+"=") {
+			t.Errorf("the harness was handed %s; it reads that variable, so the "+
+				"sitting would run under a condition the report cannot name", name)
+		}
+	}
+	// The allowlist is not a blanket refusal: authentication has to survive it,
+	// or no sitting can run at all.
+	if !strings.Contains(string(got), "ANTHROPIC_API_KEY=") {
+		t.Error("the harness was not handed ANTHROPIC_API_KEY; under --bare that " +
+			"is the only way it can authenticate")
+	}
+	if !strings.Contains(string(got), "PATH=") {
+		t.Error("the harness was not handed PATH; the agent runs shell commands")
 	}
 }
 
@@ -328,7 +471,7 @@ func TestSitReturnsTheCallersCancellationWithoutASitting(t *testing.T) {
 		cancel()
 	}()
 
-	s, err := a.Sit(ctx, work())
+	s, err := a.Sit(ctx, work(t))
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("Sit returned %v, want context.Canceled", err)
 	}
@@ -340,7 +483,7 @@ func TestSitReturnsTheCallersCancellationWithoutASitting(t *testing.T) {
 func TestSitReportsAHarnessItCannotStart(t *testing.T) {
 	a := run.Adapter{Bin: filepath.Join(t.TempDir(), "no-such-harness")}
 
-	_, err := a.Sit(context.Background(), work())
+	_, err := a.Sit(context.Background(), work(t))
 	if !errors.Is(err, port.ErrUnavailable) {
 		t.Errorf("Sit against a missing harness returned %v, want ErrUnavailable; "+
 			"a harness that is not installed is not a regression", err)
@@ -353,7 +496,7 @@ func TestSitReportsAHarnessItCannotStart(t *testing.T) {
 func TestSitStartsNothingForARefusedAssignment(t *testing.T) {
 	dir := t.TempDir()
 	marker := filepath.Join(dir, "ran")
-	a := run.Adapter{Bin: stub(t, "touch "+marker)}
+	a := run.Adapter{Bin: stub(t, "touch '"+marker+"'")}
 
 	_, err := a.Sit(context.Background(), &assay.Assignment{})
 	if !errors.Is(err, port.ErrRefused) {
@@ -383,7 +526,7 @@ func TestSitCannotClassifyOutputItCannotRead(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := run.Adapter{Bin: stub(t, tt.script)}
 
-			s, err := a.Sit(context.Background(), work())
+			s, err := a.Sit(context.Background(), work(t))
 			if err != nil {
 				t.Fatalf("Sit: %v", err)
 			}
@@ -403,7 +546,7 @@ func TestSitCannotClassifyOutputItCannotRead(t *testing.T) {
 func TestSitCarriesTheHarnessOwnWords(t *testing.T) {
 	a := run.Adapter{Bin: stub(t, "echo 'the harness fell over' >&2\nexit 2")}
 
-	s, err := a.Sit(context.Background(), work())
+	s, err := a.Sit(context.Background(), work(t))
 	if err != nil {
 		t.Fatalf("Sit: %v", err)
 	}
@@ -418,18 +561,30 @@ func TestSitCarriesTheHarnessOwnWords(t *testing.T) {
 // TestSitBoundsTheStderrItKeeps. The harness is held only by a wall-clock cap,
 // and a chatty one under debugging flags can produce output without limit.
 func TestSitBoundsTheStderrItKeeps(t *testing.T) {
-	// 40,000 lines of eight bytes is well past the bound and quick to produce.
-	a := run.Adapter{Bin: stub(t, "i=0; while [ $i -lt 40000 ]; do echo 'sevenxx' >&2; i=$((i+1)); done\nexit 1")}
+	// Past the bound, and distinguishable end to end: keeping the head rather
+	// than the tail is the plausible mistake, and identical lines would hide it.
+	a := run.Adapter{Bin: stub(t,
+		"echo 'FIRSTLINE' >&2\n"+
+			"i=0; while [ $i -lt 40000 ]; do echo 'sevenxx' >&2; i=$((i+1)); done\n"+
+			"echo 'LASTLINE' >&2\nexit 1")}
 
-	s, err := a.Sit(context.Background(), work())
+	s, err := a.Sit(context.Background(), work(t))
 	if err != nil {
 		t.Fatalf("Sit: %v", err)
 	}
-	if len(s.Stderr) > 16<<10 {
-		t.Errorf("kept %d bytes of stderr; it is meant to be bounded", len(s.Stderr))
+	if len(s.Stderr) > 8<<10 {
+		t.Errorf("kept %d bytes of stderr; the bound is 8 KiB", len(s.Stderr))
 	}
 	if s.Stderr == "" {
 		t.Error("kept no stderr at all; the bound is not a mute button")
+	}
+	if !strings.Contains(s.Stderr, "LASTLINE") {
+		t.Error("the last thing the harness said was dropped; when a process " +
+			"falls over the reason is at the end, which is why this keeps the tail")
+	}
+	if strings.Contains(s.Stderr, "FIRSTLINE") {
+		t.Error("the first line survived past the bound, so this is keeping the " +
+			"head; the doc comment says otherwise")
 	}
 }
 
@@ -451,7 +606,12 @@ func readArgs(t *testing.T, path string) []string {
 }
 
 // hasFlag reports whether args contains flag, followed by value when one is
-// wanted. Position matters: a value belongs to the flag before it.
+// wanted.
+//
+// It matches any element equal to flag, including one sitting in value position.
+// That cannot fire against the fixed values these tests pass, and tightening it
+// would mean teaching the helper which flags take values — which is the thing
+// under test.
 func hasFlag(args []string, flag, value string, hasValue bool) bool {
 	for i, a := range args {
 		if a != flag {
@@ -527,7 +687,7 @@ func TestSitClassifiesTheOtherEndingsTheSchemaPermits(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			a := run.Adapter{Bin: stub(t, "printf '%s' '"+tt.body+"'\nexit "+strconv.Itoa(tt.exit))}
 
-			s, err := a.Sit(context.Background(), work())
+			s, err := a.Sit(context.Background(), work(t))
 			if err != nil {
 				t.Fatalf("Sit: %v", err)
 			}

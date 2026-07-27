@@ -45,10 +45,11 @@ type Capture interface {
 // Query narrows a discovery. Its zero value means everything.
 //
 // It exists because discovery is not cheap: one machine held 2,485 session
-// records after a few months, and a reference's label is derived from a
-// session's contents, so listing everything means opening everything. The three
-// narrowings here are the ones a command line actually asks for. Adding them
-// later would be a breaking change to an interface published in this phase.
+// records after a few months — 741 of them sessions in their own right, the rest
+// sidecars — and a reference's label is derived from a session's contents, so
+// listing everything means opening everything. The narrowings here are the ones
+// something actually asks for; adding one later would be a breaking change to an
+// interface published in this phase.
 type Query struct {
 	// Dir limits results to sessions that worked in this directory.
 	Dir string

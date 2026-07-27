@@ -17,22 +17,28 @@ configuration. It reports what happened, as counts under named conditions.
 
 ## Status
 
-**There is no examining software here yet.** This repository contains the build,
-test, and security gates, eight architecture decision records, the enforcement of
-the package layout described in ADR-0005, and a binary that can print its own
-version. Everything below written in the future tense is unbuilt.
+**No examining commands exist yet.** The binary prints its version and stops
+there. What the repository holds is the foundation underneath one: the
+harness-neutral representation of a session, both adapter seams — reading a
+harness's own transcripts, and administering a fresh run — each with a shared
+conformance kit, a reference adapter pair for Claude Code, the exit-code
+contract, eight architecture decision records, and the build, test and security
+gates that enforce them.
 
-The design is settled and written down. What is *not* settled is whether the
-design's central assumption survives contact with measurement, and that is the
-current work.
+Everything below written in the future tense is unbuilt, and that is still most
+of it. Nothing yet distils a session into an exam, administers a suite, or
+reports a verdict.
+
+The design was settled and written down first. What was *not* settled was
+whether its central assumption survives contact with measurement, and that
+question was answered before anything was built on top of it.
 
 Agents are stochastic. The same task, run twice under identical conditions, does
 not produce the same session. So the method only works if run-to-run variance —
 measured at the level the assertions actually check, not at the level of the
 text — is small enough that a real change stands out from noise within a number
 of replays someone would be willing to pay for. That is an empirical question
-with a cheap experiment attached, and it is being answered before anything is
-built on top of it.
+with a cheap experiment attached.
 
 The bar was fixed in advance, before any data was collected:
 
@@ -41,14 +47,14 @@ The bar was fixed in advance, before any data was collected:
 > with no exam below 70%, and a median replay must cost no more than twice the
 > session it was distilled from.
 
-If the numbers come in under that bar, the design changes — coarser assertions,
-more replays by default, a different balance of evidence — before any product
-code is written. Moving the bar after seeing the data requires writing down why,
-first. A test that cannot fail is not a test, and this project has no business
-shipping an instrument if it will not hold its own first measurement to the
-standard it asks of everyone else's.
+Had the numbers come in under that bar, the design would have changed — coarser
+assertions, more replays by default, a different balance of evidence — before
+any product code was written, and moving the bar after seeing the data would
+have required writing down why, first. A test that cannot fail is not a test,
+and this project has no business shipping an instrument if it will not hold its
+own first measurement to the standard it asks of everyone else's.
 
-That measurement has now been taken, and the numbers are in [Calibration
+The measurement was taken, and the numbers are in [Calibration
 numbers](#calibration-numbers) below. Across four exams replayed thirty-five
 times each, deterministic assertions reproduced in 131 of 132 scored replays, at
 a median cost of $0.15 to $0.57 per replay depending on the task. The bar is met
@@ -398,6 +404,12 @@ Ordered by dependency. No dates: the order is a commitment, the schedule is not.
 | **3 — CI and watch** | CI integration with a sticky pull-request comment; triggers on model release, harness update, and configuration change; a zero-cost drift heartbeat | Running in real repositories, with the calibration numbers published here |
 | **4 — Matrix and bisect** | Condition matrices; bisection across model, harness, backend, and configuration | Bisection isolates a planted regression across a sixteen-condition space within a stated budget |
 | **5 — Any agent** | Adapters for further harnesses, plus a universal capture-and-replay path for agents with no adapter at all | One exam, authored once, runs on three harnesses with comparable verdicts |
+
+Phase 0 is finished; its numbers are above. Phase 1 is under way, and is the
+part of this table where the estimate is least trustworthy: the neutral core,
+both adapter seams and the Claude Code adapter pair are in, while distillation,
+the replay loop and reporting are not. Its exit criterion — a real session
+replaying and verdicting correctly — has not been met.
 
 ## Related work
 

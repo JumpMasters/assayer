@@ -110,8 +110,28 @@ type Sitting struct {
 	// produces, because a transcript records no price and a headless run reports
 	// one. This is the only place a real number reaches a cost band.
 	//
-	// Usage.Wall is the measured span of the run.
+	// Usage.Wall is left unset. See Wall below.
 	Usage Usage
+
+	// Wall is how long the run took, measured across the process.
+	//
+	// Its own field rather than Usage.Wall, which means something else: the span
+	// between the first and last timestamps a transcript happens to contain. A
+	// golden session is usually interactive and its span includes the hours a
+	// human spent thinking between records; a sitting is a headless run of
+	// minutes. Carrying both on one field would let a diagnostic compare them and
+	// report a large, plausible, meaningless number.
+	Wall time.Duration
+
+	// Turns is the number of exchanges the harness says it took, and is zero when
+	// the harness does not report one.
+	//
+	// Reported, never derived, and it may exceed the cap it was given: a measured
+	// run capped at one turn reported two. Usage carries no turn count because it
+	// would duplicate the length of a turn slice; a sitting has no turn slice, and
+	// this is the only turn figure available without resolving Native into a
+	// Session — which a sitting stopped before it finished may not be able to do.
+	Turns int
 
 	// Denials names the tools the harness was refused during the sitting. A
 	// non-empty list means the exam's allowlist or isolation tier does not match

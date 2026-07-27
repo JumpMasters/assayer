@@ -133,6 +133,8 @@ func TestEnumsImplementTextCodecs(t *testing.T) {
 		_ encoding.TextMarshaler   = Outcome(0)
 		_ encoding.TextMarshaler   = Capability(0)
 		_ encoding.TextMarshaler   = CapabilitySet(0)
+		_ encoding.TextMarshaler   = StopReason(0)
+		_ encoding.TextMarshaler   = Enforcement(0)
 		_ encoding.TextUnmarshaler = new(Role)
 		_ encoding.TextUnmarshaler = new(Tier)
 		_ encoding.TextUnmarshaler = new(ToolKind)
@@ -140,6 +142,8 @@ func TestEnumsImplementTextCodecs(t *testing.T) {
 		_ encoding.TextUnmarshaler = new(Outcome)
 		_ encoding.TextUnmarshaler = new(Capability)
 		_ encoding.TextUnmarshaler = new(CapabilitySet)
+		_ encoding.TextUnmarshaler = new(StopReason)
+		_ encoding.TextUnmarshaler = new(Enforcement)
 	)
 }
 

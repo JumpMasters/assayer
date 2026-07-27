@@ -2,7 +2,7 @@ package assay
 
 import "fmt"
 
-// Every enumeration in this package reserves its zero value for "unknown".
+// Almost every enumeration in this package reserves its zero value for "unknown".
 //
 // Go zero-values structs, so whichever variant sits at zero is what an unfilled
 // struct claims to be. Putting a meaningful variant there means a session

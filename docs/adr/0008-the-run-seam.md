@@ -102,17 +102,24 @@ imports another.
 The reference implementation matches on the transcript's file name, because the
 store names a transcript for the session it holds — measured across 400 sampled
 transcripts with no exception — and matching on contents instead would mean
-opening every file in a store that held 2,485 of them. A transcript whose name
-disagreed with its contents would not be found; the narrowing fails closed,
+opening every transcript in the store: 741 on the machine measured, out of 2,485
+files once the sidecars `Discover` already skips are counted. A transcript whose
+name disagreed with its contents would not be found; the narrowing fails closed,
 returning nothing rather than the wrong session.
 
 ### The conformance kit stops at the process boundary
 
-`VerifyRun` never calls `Sit` on a path that can reach a harness. Reading a
-transcript is free, so the capture kit loads one and inspects it. Administering a
-sitting is not: it starts a coding agent against a real model on somebody's key.
-A kit that spent a contributor's money to prove an adapter well behaved would be
-a kit deleted from the test run.
+`VerifyRun` calls `Sit` only with assignments a conforming adapter refuses
+before it starts anything. Reading a transcript is free, so the capture kit loads
+one and inspects it. Administering a sitting is not: it starts a coding agent
+against a real model on somebody's key. A kit that spent a contributor's money to
+prove an adapter well behaved would be a kit deleted from the test run.
+
+The distinction matters and is stated rather than glossed: the kit depends on the
+adapter calling `Refuse` first, which is the thing it is testing. An adapter that
+forgot would run those assignments for real. Making that structurally impossible
+needs a dry-run seam this design does not have, so adapters point `Bin` at a path
+that does not exist while under test, and the residual risk is written down here.
 
 So the kit checks declarations and refusals — everything that terminates before a
 process starts — and says so in its own documentation. Whether an adapter drives
@@ -146,8 +153,30 @@ exist for it — the same open edge as on the capture side, tracked as issue #39
 The measured facts above have a shelf life. Both caps and their reported subtypes
 were established against one release, on one machine, on one account; a future
 release could change the overshoot, the exit status, or the flag's existence. The
-fixtures are recorded so that the change shows up as a failing test rather than
-as a quietly wrong verdict, and the version they came from is named beside them.
+fixtures pin this adapter against what was recorded, and the release they came
+from is named beside them in `testdata/README.md` — but nothing re-runs the
+harness, so a release that renames a subtype degrades to an unclassified stop,
+which is ERROR and therefore safe, and silent. Noticing it needs the scheduled
+re-measurement §13.5 of the design describes, which does not exist yet.
+
+Two couplings are declared here rather than left to be discovered, in the way
+0006 declared the workspace and cost couplings. **`Assignment.Tools` is a list of
+tool names**, and tool names are a harness's vocabulary: an exam distilled against
+one harness carries names a second will not recognise, and the neutral `ToolKind`
+that exists precisely to avoid this cannot express an allowlist. An adapter that
+declares `Tools: true`, applies the list faithfully and matches nothing is
+conforming and useless. **`Assignment.Settings` is a string** whose content only
+the adapter understands, which is an escape hatch no import rule or vocabulary
+scan can see. Both are the "vendor-shaped neutral representation" 0005 says only
+review catches. Neither is fixable without a vocabulary this project has not
+earned yet; both are the reason the universal runner will declare `Tools: false`.
+
+**`Caps` can bound money, and most harnesses do not report money.** 0006 records
+that the reference harness reports no cost at all in its transcripts and that
+comparisons are denominated in tokens, which every candidate reports. A token cap
+is the one most adapters could actually keep, and it is absent. It is additive to
+both `Caps` and `Guarantees`, so this is a gap rather than a mistake — but a
+second adapter will hit it before a second user does.
 
 Nothing consumes this seam yet. The Invigilator, which will, is where isolation
 tiers, escalation and pacing land — and it is deliberately not designed here,

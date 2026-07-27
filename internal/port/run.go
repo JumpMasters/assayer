@@ -77,11 +77,28 @@ const (
 // reads as flakiness.
 func Refuse(g assay.Guarantees, a *assay.Assignment) error {
 	switch {
+	case a == nil:
+		return fmt.Errorf("%w: no assignment at all", ErrRefused)
+
+	// The first three are not guarantees. They are the same rule one step
+	// earlier: an assignment that cannot produce a meaningful sitting must not
+	// start a process, because asking a harness to do nothing still costs money.
 	case a.Instruction == "":
-		// Not a guarantee, but the same rule: an assignment that cannot produce
-		// a meaningful sitting must not start a process. A harness handed
-		// nothing to do still costs money to ask.
 		return fmt.Errorf("%w: an assignment with no instruction", ErrRefused)
+	case a.Dir == "":
+		// Without this the harness inherits Assayer's own working directory,
+		// which is the user's repository, and works in it with whatever tool
+		// reach the harness defaults to. Isolation belongs to the caller, so
+		// this does not say which directory — only that the caller chose one.
+		return fmt.Errorf("%w: an assignment with no working directory", ErrRefused)
+	case a.Caps.BudgetMicroUSD < 0 || a.Caps.Wall < 0 || a.Caps.Turns < 0:
+		// A negative cap is not "no cap". An orchestrator computing a wall cap
+		// as the time left before a deadline produces one exactly when it is
+		// already late, and a >0 test would drop it — leaving the run that most
+		// needed capping uncapped. Refusing is the only reading that cannot
+		// silently widen a bound somebody set.
+		return fmt.Errorf("%w: a negative cap", ErrRefused)
+
 	case a.Caps.BudgetMicroUSD > 0 && g.Budget == assay.EnforcementNone:
 		return fmt.Errorf("%w: a budget cap", ErrRefused)
 	case a.Caps.Wall > 0 && g.Wall == assay.EnforcementNone:

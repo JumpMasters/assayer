@@ -167,3 +167,50 @@ func (r Reference) Load(_ context.Context, ref port.Ref) (assay.Session, error) 
 		},
 	}, nil
 }
+
+// ReferenceRun is a run adapter for a harness that does not exist.
+//
+// Where Reference is shaped unlike the measured harness, this one is shaped
+// unlike the measured harness's *runner*: it is the command-template case the
+// roadmap names, wrapping an agent that was never designed to be driven. It can
+// end a process it started and it can do nothing else — no budget flag, no turn
+// flag, no way to name a model or narrow a toolset, no configuration to overlay.
+//
+// That is the point. The reference run adapter declares almost nothing, so the
+// kit's refusal checks have something to check; an adapter that guarantees
+// everything, as the measured one happens to, exercises none of them.
+type ReferenceRun struct{}
+
+var _ port.Run = ReferenceRun{}
+
+// ID implements port.Run.
+func (ReferenceRun) ID() string { return "reference-run" }
+
+// Tier implements port.Run. Wrapping a command is the weakest way to drive a
+// harness and says so.
+func (ReferenceRun) Tier() assay.Tier { return assay.TierWrapped }
+
+// Guarantees implements port.Run. Only the cap that comes from owning a process.
+func (ReferenceRun) Guarantees() assay.Guarantees {
+	return assay.Guarantees{Wall: assay.EnforcementSupervised}
+}
+
+// Sit implements port.Run. It refuses what it cannot hold and otherwise invents
+// a sitting: this harness does not exist, so there is nothing to run and nothing
+// to spend.
+func (r ReferenceRun) Sit(ctx context.Context, a *assay.Assignment) (assay.Sitting, error) {
+	if err := port.Refuse(r.Guarantees(), a); err != nil {
+		return assay.Sitting{}, err
+	}
+	if err := ctx.Err(); err != nil {
+		return assay.Sitting{}, err
+	}
+	return assay.Sitting{
+		Adapter:    r.ID(),
+		Tier:       r.Tier(),
+		Guarantees: r.Guarantees(),
+		Native:     "reference-sitting-1",
+		Stop:       assay.StopComplete,
+		Usage:      assay.Usage{InputTokens: 1200, OutputTokens: 340, Wall: 42 * time.Second},
+	}, nil
+}

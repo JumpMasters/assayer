@@ -18,7 +18,7 @@ configuration. It reports what happened, as counts under named conditions.
 ## Status
 
 **There is no examining software here yet.** This repository contains the build,
-test, and security gates, seven architecture decision records, the enforcement of
+test, and security gates, eight architecture decision records, the enforcement of
 the package layout described in ADR-0005, and a binary that can print its own
 version. Everything below written in the future tense is unbuilt.
 

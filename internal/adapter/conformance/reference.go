@@ -58,7 +58,7 @@ func (Reference) Capabilities() assay.CapabilitySet {
 		assay.CanSeeToolCalls,
 		assay.CanSeeToolInputs,
 		assay.CanSeeToolResults,
-		assay.CanSeeExitStatus,
+		assay.CanSeeToolOutcome,
 		assay.CanSeeFileMutations,
 		assay.CanSeeModelIdentity,
 		assay.CanSeeTokens,
@@ -121,7 +121,7 @@ func (r Reference) Load(_ context.Context, ref port.Ref) (assay.Session, error) 
 			Result: &assay.ToolResult{
 				Text:     "ok\n",
 				Outcome:  assay.OutcomeOK,
-				ExitCode: exit,
+				ExitCode: &exit,
 			},
 		}, {
 			Name:      "put",
